@@ -1,0 +1,8 @@
+node_modules
+dist
+build
+playwright-report
+test-results
+package-lock.json
+backend
+frontend/src/lib/api/schema.d.ts

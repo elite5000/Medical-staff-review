@@ -14,7 +14,7 @@ Given a request (feature, bug fix, ticket), produce a concrete test plan the dev
 - **Acceptance criteria**: restate the request as a checklist of observable, testable outcomes. If the request is ambiguous, call out the ambiguity explicitly rather than silently picking an interpretation.
 - **Functional cases**: the happy path plus the edge cases that actually matter for this change (empty/null input, boundary values, concurrent/duplicate actions, permission/role differences if relevant).
 - **Regression risk**: what existing behavior could this change plausibly break? Name it.
-- **UI/UX checks** (when the change touches UI): what should the feature look and behave like, and — critically — how does it need to match the *existing* UI already in this codebase (component patterns, spacing, typography, interaction conventions, terminology)? Look at comparable existing screens/components before writing this section, don't guess.
+- **UI/UX checks** (when the change touches UI): what should the feature look and behave like, and — critically — how does it need to match the _existing_ UI already in this codebase (component patterns, spacing, typography, interaction conventions, terminology)? Look at comparable existing screens/components before writing this section, don't guess.
 
 Hand this plan to the developer before or alongside implementation, not after.
 

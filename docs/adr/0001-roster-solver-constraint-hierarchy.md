@@ -1,0 +1,3 @@
+# Roster solver constraint hierarchy
+
+The roster solver distinguishes hard constraints it must never violate (Eligibility-restriction rules, Max Daily Hours, Unavailability, Travel Time, one-person-per-room) from prioritized soft goals it optimizes for: (1) Minimum-count rules, (2) the room-fill goal, (3) Preferred Days. We chose this because real staffing is often short-handed — a solver that fails outright whenever a minimum-count rule or a room can't be filled would refuse to produce a usable roster during exactly the periods (understaffing) when the practice needs one most. Violations of minimum-count rules are still surfaced as loud, explicit flags for a human to act on; they are not silently dropped.

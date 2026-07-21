@@ -13,7 +13,19 @@
       "WebFetch(domain:github.com)",
       "WebFetch(domain:devblogs.microsoft.com)",
       "WebFetch(domain:www.npmjs.com)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(node -e \"console.log\\(require\\('./node_modules/typescript7/package.json'\\).version\\)\")",
+      "Bash(npm run *)",
+      "Bash(node --input-type=module -e ' *)",
+      "Bash(node ./node_modules/typescript7/bin/tsc --version)",
+      "Bash(echo \"typecheck exit code: $?\")",
+      "Bash(npx eslint *)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(npx prettier *)",
+      "Bash(node -e \"let d='';process.stdin.on\\('data',c=>d+=c\\);process.stdin.on\\('end',\\(\\)=>{const v=JSON.parse\\(d\\);console.log\\(v.slice\\(-8\\)\\)}\\)\")",
+      "Bash(bash .claude/hooks/stop-checks.sh)",
+      "Bash(node -e ' *)",
+      "Read(//c/Users/mikel/.claude/plugins/cache/mattpocock/mattpocock-skills/1.2.0/skills/engineering/domain-modeling/**)"
     ]
   }
 }
