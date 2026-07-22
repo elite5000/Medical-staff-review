@@ -28,7 +28,11 @@
       "Read(//c/Users/mikel/.claude/plugins/cache/mattpocock/mattpocock-skills/1.2.0/skills/engineering/domain-modeling/**)",
       "Bash(git diff *)",
       "Bash(git --version)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(PYTHONPATH=\"C:\\\\Projects\\\\Medical staff review\\\\backend\" ./.venv/Scripts/python.exe \"C:\\\\Users\\\\mikel\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Projects-Medical-staff-review\\\\12688f8c-77a0-4247-ac3e-740905f6bd6c\\\\scratchpad\\\\repro.py\")",
+      "Bash(./.venv/Scripts/python.exe -)",
+      "Bash(echo \"exit:$?\")"
     ]
   }
 }

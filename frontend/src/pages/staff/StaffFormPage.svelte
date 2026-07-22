@@ -6,9 +6,11 @@
   import { api } from '../../lib/api/client';
   import type { components } from '../../lib/api/schema';
   import ErrorBanner from '../../lib/components/ErrorBanner.svelte';
+  import UnavailabilityCalendar from '../../lib/components/UnavailabilityCalendar.svelte';
   import { DAY_NAMES } from '../../lib/utils/time';
 
   type Role = components['schemas']['RoleRead'];
+  type Staff = components['schemas']['StaffRead'];
   type Unavailability = components['schemas']['UnavailabilityRead'];
 
   let { params = {} }: { params?: { id?: string } } = $props();
@@ -19,6 +21,7 @@
   const selectedRoleIds = new SvelteSet<number>();
   const selectedPreferredDays = new SvelteSet<number>();
   let roles: Role[] = $state([]);
+  let allStaff: Staff[] = $state([]);
   let unavailabilities: Unavailability[] = $state([]);
   let error: string | null = $state(null);
 
@@ -29,6 +32,15 @@
   async function loadOptions() {
     const { data } = await api.GET('/roles');
     roles = data ?? [];
+  }
+
+  // Re-fetched alongside the edited staff member (not in loadOptions) so navigating between
+  // two staff edit pages — which svelte-spa-router may do without remounting this component —
+  // always shows everyone's latest unavailability, not a snapshot from whenever this
+  // component instance first mounted.
+  async function loadAllStaff() {
+    const { data } = await api.GET('/staff');
+    allStaff = data ?? [];
   }
 
   async function loadStaff(id: number) {
@@ -50,8 +62,17 @@
 
   loadOptions();
   $effect(() => {
+    loadAllStaff();
     if (staffId !== null) loadStaff(staffId);
   });
+
+  // Keeps the calendar's view of the current staff member's unavailabilities live as they're
+  // added/removed below, without waiting on a re-fetch of the whole staff list.
+  const staffForCalendar = $derived(
+    allStaff.map((person) =>
+      person.id === staffId ? { ...person, unavailabilities } : person,
+    ),
+  );
 
   function toggle(set: SvelteSet<number>, id: number) {
     if (set.has(id)) {
@@ -171,6 +192,7 @@
 
 {#if staffId !== null}
   <h2>Unavailability</h2>
+  <UnavailabilityCalendar staff={staffForCalendar} highlightStaffId={staffId} />
   <table>
     <thead>
       <tr>

@@ -19,6 +19,9 @@ beforeEach(() => {
     if (path === '/roles') {
       return Promise.resolve(mockResponse([{ id: 1, name: 'Senior Fellow' }]));
     }
+    if (path === '/staff') {
+      return Promise.resolve(mockResponse([]));
+    }
     return Promise.resolve(mockResponse(undefined));
   });
 });
@@ -60,20 +63,22 @@ describe('StaffFormPage', () => {
   });
 
   it('adds an unavailability for an existing staff member', async () => {
+    const staffRecord = {
+      id: 7,
+      name: 'Dr. Bob',
+      active: true,
+      roles: [],
+      preferred_days: [],
+      unavailabilities: [],
+    };
     mockedApi.GET.mockImplementation((path: string) => {
       if (path === '/roles') {
         return Promise.resolve(mockResponse([]));
       }
-      return Promise.resolve(
-        mockResponse({
-          id: 7,
-          name: 'Dr. Bob',
-          active: true,
-          roles: [],
-          preferred_days: [],
-          unavailabilities: [],
-        }),
-      );
+      if (path === '/staff') {
+        return Promise.resolve(mockResponse([staffRecord]));
+      }
+      return Promise.resolve(mockResponse(staffRecord));
     });
     mockedApi.POST.mockResolvedValue(
       mockResponse({

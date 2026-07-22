@@ -90,3 +90,88 @@ fieldset {
   padding: 0.5rem 0.75rem;
   margin-block: 0.75rem;
 }
+
+.unavailability-calendar {
+  max-width: 22rem;
+  margin-block: 1rem;
+}
+
+.unavailability-calendar .calendar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.unavailability-calendar .calendar-header button {
+  line-height: 1;
+  padding: 0.15rem 0.5rem;
+}
+
+.calendar-grid {
+  margin-block: 0;
+  table-layout: fixed;
+}
+
+.calendar-grid th {
+  font-weight: normal;
+  font-size: 0.75rem;
+  text-align: center;
+  padding: 0.2rem;
+  border-bottom: 1px solid light-dark(#ddd, #333);
+}
+
+.calendar-grid td {
+  vertical-align: top;
+  height: 2.6rem;
+  padding: 0.15rem;
+  border: 1px solid light-dark(#eee, #2a2a2a);
+}
+
+.calendar-grid td.empty {
+  border-color: transparent;
+}
+
+.day-number {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.day-dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15rem;
+  margin-top: 0.15rem;
+}
+
+.unavailability-calendar .dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.unavailability-calendar .dot.highlighted {
+  outline: 2px solid light-dark(#000, #fff);
+  outline-offset: 1px;
+}
+
+.calendar-legend {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+.calendar-legend li {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.calendar-legend li.highlighted {
+  font-weight: bold;
+}
