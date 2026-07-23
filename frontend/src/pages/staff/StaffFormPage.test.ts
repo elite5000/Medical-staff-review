@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/svelte';
+import { render, screen, waitFor, within } from '@testing-library/svelte';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { api } from '../../lib/api/client';
@@ -47,7 +47,8 @@ describe('StaffFormPage', () => {
     nameInput.dispatchEvent(new Event('input'));
 
     screen.getByLabelText('Senior Fellow').click();
-    screen.getByLabelText('Mon').click();
+    const week1Group = screen.getByRole('group', { name: 'Preferred days — Week 1' });
+    within(week1Group).getByLabelText('Mon').click();
     screen.getByText('Save').closest('form')?.requestSubmit();
 
     await waitFor(() =>
@@ -56,7 +57,7 @@ describe('StaffFormPage', () => {
           name: 'Dr. Alice',
           active: true,
           role_ids: [1],
-          preferred_days: [0],
+          preferred_days: [{ week: 0, day_of_week: 0 }],
         },
       }),
     );

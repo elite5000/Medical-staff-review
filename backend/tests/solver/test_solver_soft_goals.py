@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 
 from app.services.solver.model import solve_roster
 from app.services.solver.types import (
@@ -79,7 +79,8 @@ def test_room_fill_outranks_preferred_days() -> None:
     stay empty — Tier 2 always beats Tier 3."""
     building = SolverBuilding(id=1, opening_minutes=480, closing_minutes=720)
     room = SolverRoom(id=1, building_id=1, tag_ids=frozenset())
-    staff = SolverStaff(id=1, role_ids=frozenset(), preferred_days=frozenset({0}))  # Monday only
+    # Week 1 (week 0) Monday only.
+    staff = SolverStaff(id=1, role_ids=frozenset(), preferred_days=frozenset({(0, 0)}))
 
     result = solve_roster(
         RosterSolveInput(
@@ -102,7 +103,7 @@ def test_preferred_day_honored_when_no_coverage_cost() -> None:
     should be honored since it costs nothing."""
     building = SolverBuilding(id=1, opening_minutes=480, closing_minutes=720)
     room = SolverRoom(id=1, building_id=1, tag_ids=frozenset())
-    prefers_monday = SolverStaff(id=1, role_ids=frozenset(), preferred_days=frozenset({0}))
+    prefers_monday = SolverStaff(id=1, role_ids=frozenset(), preferred_days=frozenset({(0, 0)}))
     no_preference = SolverStaff(id=2, role_ids=frozenset(), preferred_days=frozenset())
 
     result = solve_roster(
@@ -119,3 +120,35 @@ def test_preferred_day_honored_when_no_coverage_cost() -> None:
     )
     assert len(result.shifts) == 1
     assert result.shifts[0].staff_id == 1
+
+
+def test_preferred_day_can_differ_between_weeks() -> None:
+    """The same day_of_week can be preferred in one week of the fortnight but not the
+    other, and vice versa — each week's preference is honored independently."""
+    building = SolverBuilding(id=1, opening_minutes=480, closing_minutes=720)
+    room = SolverRoom(id=1, building_id=1, tag_ids=frozenset())
+    # A prefers week 1's Monday only; B prefers week 2's Tuesday only.
+    prefers_week1_monday = SolverStaff(
+        id=1, role_ids=frozenset(), preferred_days=frozenset({(0, 0)})
+    )
+    prefers_week2_tuesday = SolverStaff(
+        id=2, role_ids=frozenset(), preferred_days=frozenset({(1, 1)})
+    )
+
+    result = solve_roster(
+        RosterSolveInput(
+            start_date=MONDAY,
+            num_days=14,
+            shift_length_minutes=240,
+            travel_time_minutes=0,
+            max_daily_minutes=720,
+            buildings=[building],
+            rooms=[room],
+            staff=[prefers_week1_monday, prefers_week2_tuesday],
+        )
+    )
+    shifts_by_date = {s.date: s.staff_id for s in result.shifts}
+    week1_monday = MONDAY
+    week2_tuesday = MONDAY + timedelta(days=8)
+    assert shifts_by_date[week1_monday] == 1
+    assert shifts_by_date[week2_tuesday] == 2

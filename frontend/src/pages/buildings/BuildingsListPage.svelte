@@ -2,14 +2,21 @@
   import { link } from 'svelte-spa-router';
 
   import { api } from '../../lib/api/client';
+  import { resizableColumns } from '../../lib/actions/resizableColumns';
   import type { components } from '../../lib/api/schema';
   import ErrorBanner from '../../lib/components/ErrorBanner.svelte';
+  import TableSearch from '../../lib/components/TableSearch.svelte';
   import { minutesToTime } from '../../lib/utils/time';
 
   type Building = components['schemas']['BuildingRead'];
 
   let buildings: Building[] = $state([]);
   let error: string | null = $state(null);
+  let query = $state('');
+
+  const filteredBuildings = $derived(
+    buildings.filter((b) => b.name.toLowerCase().includes(query.toLowerCase())),
+  );
 
   async function load() {
     const { data, error: err } = await api.GET('/buildings');
@@ -43,7 +50,9 @@
   <a href="/buildings/new" use:link>New Building</a>
 </div>
 
-<table>
+<TableSearch bind:value={query} placeholder="Search buildings…" />
+
+<table use:resizableColumns>
   <thead>
     <tr>
       <th>Name</th>
@@ -52,7 +61,7 @@
     </tr>
   </thead>
   <tbody>
-    {#each buildings as building (building.id)}
+    {#each filteredBuildings as building (building.id)}
       <tr>
         <td>{building.name}</td>
         <td

@@ -32,7 +32,20 @@
       "Bash(git commit *)",
       "Bash(PYTHONPATH=\"C:\\\\Projects\\\\Medical staff review\\\\backend\" ./.venv/Scripts/python.exe \"C:\\\\Users\\\\mikel\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Projects-Medical-staff-review\\\\12688f8c-77a0-4247-ac3e-740905f6bd6c\\\\scratchpad\\\\repro.py\")",
       "Bash(./.venv/Scripts/python.exe -)",
-      "Bash(echo \"exit:$?\")"
+      "Bash(echo \"exit:$?\")",
+      "Bash(./.venv/Scripts/python.exe -c ' *)",
+      "Bash(./.venv/Scripts/python.exe -m alembic upgrade head)",
+      "Bash(./.venv/Scripts/python.exe -m pytest -q)",
+      "Bash(curl -s http://localhost:8000/openapi.json)",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(d['components']['schemas'].get\\('RuleCreate',{}\\).get\\('properties',{}\\).keys\\(\\)\\)\")",
+      "Bash(./.venv/Scripts/python.exe -m ruff check app/schemas/staff.py)",
+      "Bash(./.venv/Scripts/python.exe -m ruff format --check app/schemas/staff.py)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:8000/health)",
+      "Bash(curl -s http://localhost:8000/staff/3)",
+      "Bash(curl *)",
+      "Bash(./.venv/Scripts/python.exe -m ruff check app tests)",
+      "Bash(./.venv/Scripts/python.exe -m ruff format --check app tests)",
+      "Bash(./.venv/Scripts/python.exe -m mypy app)"
     ]
   }
 }

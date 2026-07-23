@@ -10,6 +10,7 @@ class RuleBase(BaseModel):
     IntegrityError from SQLite.
     """
 
+    name: str
     rule_type: RuleType
     role_id: int
     building_id: int | None = None

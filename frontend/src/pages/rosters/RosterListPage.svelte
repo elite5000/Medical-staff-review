@@ -3,6 +3,7 @@
 
   import { api } from '../../lib/api/client';
   import { extractErrorMessage } from '../../lib/api/errors';
+  import { resizableColumns } from '../../lib/actions/resizableColumns';
   import type { components } from '../../lib/api/schema';
   import ErrorBanner from '../../lib/components/ErrorBanner.svelte';
 
@@ -60,7 +61,7 @@
   <a href="/rosters/generate" use:link>Generate Roster</a>
 </div>
 
-<table>
+<table use:resizableColumns>
   <thead>
     <tr>
       <th>Date range</th>

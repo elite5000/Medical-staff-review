@@ -1,6 +1,7 @@
 <script lang="ts">
   import { api } from '../../lib/api/client';
   import { extractErrorMessage } from '../../lib/api/errors';
+  import { resizableColumns } from '../../lib/actions/resizableColumns';
   import type { components } from '../../lib/api/schema';
   import ErrorBanner from '../../lib/components/ErrorBanner.svelte';
 
@@ -122,7 +123,7 @@
 
   {#each [...shiftsByDate.entries()] as [date, shifts] (date)}
     <h2>{date}</h2>
-    <table>
+    <table use:resizableColumns>
       <thead>
         <tr>
           <th>Room</th>

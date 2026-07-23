@@ -2,6 +2,7 @@
   import { link } from 'svelte-spa-router';
 
   import { api } from '../../lib/api/client';
+  import { resizableColumns } from '../../lib/actions/resizableColumns';
   import type { components } from '../../lib/api/schema';
   import ErrorBanner from '../../lib/components/ErrorBanner.svelte';
 
@@ -47,7 +48,7 @@
   <a href="/rooms/new" use:link>New Room</a>
 </div>
 
-<table>
+<table use:resizableColumns>
   <thead>
     <tr>
       <th>Name</th>

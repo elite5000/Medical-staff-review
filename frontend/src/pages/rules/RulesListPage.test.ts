@@ -21,6 +21,7 @@ beforeEach(() => {
         mockResponse([
           {
             id: 1,
+            name: 'ED minimum staffing',
             rule_type: 'minimum_count',
             role_id: 1,
             building_id: null,

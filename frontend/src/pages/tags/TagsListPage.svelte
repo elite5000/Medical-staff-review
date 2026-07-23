@@ -2,13 +2,20 @@
   import { link } from 'svelte-spa-router';
 
   import { api } from '../../lib/api/client';
+  import { resizableColumns } from '../../lib/actions/resizableColumns';
   import type { components } from '../../lib/api/schema';
   import ErrorBanner from '../../lib/components/ErrorBanner.svelte';
+  import TableSearch from '../../lib/components/TableSearch.svelte';
 
   type Tag = components['schemas']['TagRead'];
 
   let tags: Tag[] = $state([]);
   let error: string | null = $state(null);
+  let query = $state('');
+
+  const filteredTags = $derived(
+    tags.filter((t) => t.name.toLowerCase().includes(query.toLowerCase())),
+  );
 
   async function load() {
     const { data, error: err } = await api.GET('/tags');
@@ -42,7 +49,9 @@
   <a href="/tags/new" use:link>New Tag</a>
 </div>
 
-<table>
+<TableSearch bind:value={query} placeholder="Search tags…" />
+
+<table use:resizableColumns>
   <thead>
     <tr>
       <th>Name</th>
@@ -50,7 +59,7 @@
     </tr>
   </thead>
   <tbody>
-    {#each tags as tag (tag.id)}
+    {#each filteredTags as tag (tag.id)}
       <tr>
         <td>{tag.name}</td>
         <td>

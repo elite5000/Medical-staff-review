@@ -20,6 +20,7 @@ def test_minimum_count_rule_on_building(client: TestClient) -> None:
     response = client.post(
         "/rules",
         json={
+            "name": "ED minimum staffing",
             "rule_type": "minimum_count",
             "role_id": ctx["role"]["id"],
             "building_id": ctx["building"]["id"],
@@ -35,6 +36,7 @@ def test_minimum_count_rule_on_tag(client: TestClient) -> None:
     response = client.post(
         "/rules",
         json={
+            "name": "ED minimum staffing",
             "rule_type": "minimum_count",
             "role_id": ctx["role"]["id"],
             "tag_id": ctx["tag"]["id"],
@@ -49,6 +51,7 @@ def test_minimum_count_rule_requires_exactly_one_target(client: TestClient) -> N
     both = client.post(
         "/rules",
         json={
+            "name": "ED minimum staffing",
             "rule_type": "minimum_count",
             "role_id": ctx["role"]["id"],
             "building_id": ctx["building"]["id"],
@@ -60,7 +63,12 @@ def test_minimum_count_rule_requires_exactly_one_target(client: TestClient) -> N
 
     neither = client.post(
         "/rules",
-        json={"rule_type": "minimum_count", "role_id": ctx["role"]["id"], "minimum_count": 1},
+        json={
+            "name": "ED minimum staffing",
+            "rule_type": "minimum_count",
+            "role_id": ctx["role"]["id"],
+            "minimum_count": 1,
+        },
     )
     assert neither.status_code == 422
 
@@ -70,6 +78,7 @@ def test_minimum_count_rule_requires_positive_count(client: TestClient) -> None:
     response = client.post(
         "/rules",
         json={
+            "name": "ED minimum staffing",
             "rule_type": "minimum_count",
             "role_id": ctx["role"]["id"],
             "building_id": ctx["building"]["id"],
@@ -84,6 +93,7 @@ def test_eligibility_restriction_rule_on_tag(client: TestClient) -> None:
     response = client.post(
         "/rules",
         json={
+            "name": "ED eligibility",
             "rule_type": "eligibility_restriction",
             "role_id": ctx["role"]["id"],
             "tag_id": ctx["tag"]["id"],
@@ -97,6 +107,7 @@ def test_eligibility_restriction_rule_rejects_building_target(client: TestClient
     response = client.post(
         "/rules",
         json={
+            "name": "ED eligibility",
             "rule_type": "eligibility_restriction",
             "role_id": ctx["role"]["id"],
             "building_id": ctx["building"]["id"],
@@ -109,7 +120,11 @@ def test_eligibility_restriction_rule_requires_tag(client: TestClient) -> None:
     ctx = _setup(client)
     response = client.post(
         "/rules",
-        json={"rule_type": "eligibility_restriction", "role_id": ctx["role"]["id"]},
+        json={
+            "name": "ED eligibility",
+            "rule_type": "eligibility_restriction",
+            "role_id": ctx["role"]["id"],
+        },
     )
     assert response.status_code == 422
 
@@ -119,6 +134,7 @@ def test_create_rule_unknown_role_422(client: TestClient) -> None:
     response = client.post(
         "/rules",
         json={
+            "name": "ED minimum staffing",
             "rule_type": "minimum_count",
             "role_id": 999,
             "building_id": ctx["building"]["id"],
@@ -135,6 +151,7 @@ def test_delete_rule_referenced_by_violation_history_conflicts(
     rule = client.post(
         "/rules",
         json={
+            "name": "ED minimum staffing",
             "rule_type": "minimum_count",
             "role_id": ctx["role"]["id"],
             "building_id": ctx["building"]["id"],

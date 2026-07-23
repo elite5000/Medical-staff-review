@@ -11,6 +11,7 @@
   type Tag = components['schemas']['TagRead'];
   type RuleType = components['schemas']['RuleType'];
 
+  let name = $state('');
   let ruleType: RuleType = $state('minimum_count');
   let roleId: number | null = $state(null);
   let targetType: 'building' | 'tag' = $state('building');
@@ -48,8 +49,9 @@
     }
     const body =
       ruleType === 'eligibility_restriction'
-        ? { rule_type: ruleType, role_id: roleId, tag_id: tagId }
+        ? { name, rule_type: ruleType, role_id: roleId, tag_id: tagId }
         : {
+            name,
             rule_type: ruleType,
             role_id: roleId,
             minimum_count: minimumCount,
@@ -69,6 +71,10 @@
 <ErrorBanner message={error} />
 
 <form onsubmit={save}>
+  <label>
+    Name
+    <input type="text" bind:value={name} required />
+  </label>
   <label>
     Rule type
     <select bind:value={ruleType}>

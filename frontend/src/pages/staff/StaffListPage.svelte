@@ -2,13 +2,20 @@
   import { link } from 'svelte-spa-router';
 
   import { api } from '../../lib/api/client';
+  import { resizableColumns } from '../../lib/actions/resizableColumns';
   import type { components } from '../../lib/api/schema';
   import ErrorBanner from '../../lib/components/ErrorBanner.svelte';
+  import TableSearch from '../../lib/components/TableSearch.svelte';
 
   type Staff = components['schemas']['StaffRead'];
 
   let staff: Staff[] = $state([]);
   let error: string | null = $state(null);
+  let query = $state('');
+
+  const filteredStaff = $derived(
+    staff.filter((s) => s.name.toLowerCase().includes(query.toLowerCase())),
+  );
 
   async function load() {
     const { data, error: err } = await api.GET('/staff');
@@ -42,7 +49,9 @@
   <a href="/staff/new" use:link>New Staff Member</a>
 </div>
 
-<table>
+<TableSearch bind:value={query} placeholder="Search staff…" />
+
+<table use:resizableColumns>
   <thead>
     <tr>
       <th>Name</th>
@@ -52,7 +61,7 @@
     </tr>
   </thead>
   <tbody>
-    {#each staff as person (person.id)}
+    {#each filteredStaff as person (person.id)}
       <tr>
         <td>{person.name}</td>
         <td>{person.active ? 'Yes' : 'No'}</td>

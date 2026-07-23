@@ -4,6 +4,7 @@
 
   import { extractErrorMessage } from '../../lib/api/errors';
   import { api } from '../../lib/api/client';
+  import { resizableColumns } from '../../lib/actions/resizableColumns';
   import type { components } from '../../lib/api/schema';
   import ErrorBanner from '../../lib/components/ErrorBanner.svelte';
   import UnavailabilityCalendar from '../../lib/components/UnavailabilityCalendar.svelte';
@@ -19,7 +20,10 @@
   let name = $state('');
   let active = $state(true);
   const selectedRoleIds = new SvelteSet<number>();
-  const selectedPreferredDays = new SvelteSet<number>();
+  // Split per week (0 = week 1, 1 = week 2) so a preference can differ between the two
+  // weeks of the fortnight — see CONTEXT.md's Preferred Days entry.
+  const selectedPreferredDaysWeek1 = new SvelteSet<number>();
+  const selectedPreferredDaysWeek2 = new SvelteSet<number>();
   let roles: Role[] = $state([]);
   let allStaff: Staff[] = $state([]);
   let unavailabilities: Unavailability[] = $state([]);
@@ -55,8 +59,13 @@
     active = data.active;
     selectedRoleIds.clear();
     for (const role of data.roles) selectedRoleIds.add(role.id);
-    selectedPreferredDays.clear();
-    for (const day of data.preferred_days) selectedPreferredDays.add(day);
+    selectedPreferredDaysWeek1.clear();
+    selectedPreferredDaysWeek2.clear();
+    for (const pd of data.preferred_days) {
+      (pd.week === 0 ? selectedPreferredDaysWeek1 : selectedPreferredDaysWeek2).add(
+        pd.day_of_week,
+      );
+    }
     unavailabilities = data.unavailabilities;
   }
 
@@ -89,7 +98,16 @@
       name,
       active,
       role_ids: Array.from(selectedRoleIds),
-      preferred_days: Array.from(selectedPreferredDays),
+      preferred_days: [
+        ...Array.from(selectedPreferredDaysWeek1, (day_of_week) => ({
+          week: 0,
+          day_of_week,
+        })),
+        ...Array.from(selectedPreferredDaysWeek2, (day_of_week) => ({
+          week: 1,
+          day_of_week,
+        })),
+      ],
     };
     if (staffId === null) {
       const { data, error: err } = await api.POST('/staff', { body });
@@ -175,13 +193,26 @@
     {/each}
   </fieldset>
   <fieldset>
-    <legend>Preferred days</legend>
+    <legend>Preferred days — Week 1</legend>
     {#each DAY_NAMES as dayName, index (index)}
       <label class="checkbox-row">
         <input
           type="checkbox"
-          checked={selectedPreferredDays.has(index)}
-          onchange={() => toggle(selectedPreferredDays, index)}
+          checked={selectedPreferredDaysWeek1.has(index)}
+          onchange={() => toggle(selectedPreferredDaysWeek1, index)}
+        />
+        {dayName}
+      </label>
+    {/each}
+  </fieldset>
+  <fieldset>
+    <legend>Preferred days — Week 2</legend>
+    {#each DAY_NAMES as dayName, index (index)}
+      <label class="checkbox-row">
+        <input
+          type="checkbox"
+          checked={selectedPreferredDaysWeek2.has(index)}
+          onchange={() => toggle(selectedPreferredDaysWeek2, index)}
         />
         {dayName}
       </label>
@@ -193,7 +224,7 @@
 {#if staffId !== null}
   <h2>Unavailability</h2>
   <UnavailabilityCalendar staff={staffForCalendar} highlightStaffId={staffId} />
-  <table>
+  <table use:resizableColumns>
     <thead>
       <tr>
         <th>Start</th>

@@ -2,13 +2,20 @@
   import { link } from 'svelte-spa-router';
 
   import { api } from '../../lib/api/client';
+  import { resizableColumns } from '../../lib/actions/resizableColumns';
   import type { components } from '../../lib/api/schema';
   import ErrorBanner from '../../lib/components/ErrorBanner.svelte';
+  import TableSearch from '../../lib/components/TableSearch.svelte';
 
   type Role = components['schemas']['RoleRead'];
 
   let roles: Role[] = $state([]);
   let error: string | null = $state(null);
+  let query = $state('');
+
+  const filteredRoles = $derived(
+    roles.filter((r) => r.name.toLowerCase().includes(query.toLowerCase())),
+  );
 
   async function load() {
     const { data, error: err } = await api.GET('/roles');
@@ -42,7 +49,9 @@
   <a href="/roles/new" use:link>New Role</a>
 </div>
 
-<table>
+<TableSearch bind:value={query} placeholder="Search roles…" />
+
+<table use:resizableColumns>
   <thead>
     <tr>
       <th>Name</th>
@@ -50,7 +59,7 @@
     </tr>
   </thead>
   <tbody>
-    {#each roles as role (role.id)}
+    {#each filteredRoles as role (role.id)}
       <tr>
         <td>{role.name}</td>
         <td>

@@ -28,13 +28,18 @@ class Staff(Base):
 
 
 class PreferredDay(Base):
-    """A staff member's standing, recurring day-of-week preference (soft goal for the solver)."""
+    """
+    A staff member's standing, recurring day-of-week preference (soft goal for the solver).
+    Scoped per week of the fortnight (week 0 = week 1, week 1 = week 2) so a preference can
+    differ between the two weeks — see CONTEXT.md's Preferred Days entry.
+    """
 
     __tablename__ = "staff_preferred_days"
-    __table_args__ = (UniqueConstraint("staff_id", "day_of_week"),)
+    __table_args__ = (UniqueConstraint("staff_id", "week", "day_of_week"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     staff_id: Mapped[int] = mapped_column(ForeignKey("staff.id"))
+    week: Mapped[int]  # 0 = week 1, 1 = week 2
     day_of_week: Mapped[int]  # 0 = Monday ... 6 = Sunday
 
     staff: Mapped["Staff"] = relationship(back_populates="preferred_days")

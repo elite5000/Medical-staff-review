@@ -6,19 +6,25 @@ from app.models.role import Role
 from app.models.shift import Shift
 from app.models.staff import PreferredDay, Staff, Unavailability
 from app.schemas.role import RoleRead
-from app.schemas.staff import StaffCreate, StaffRead, StaffUpdate
+from app.schemas.staff import PreferredDayInput, StaffCreate, StaffRead, StaffUpdate
 from app.schemas.unavailability import UnavailabilityCreate, UnavailabilityRead
 
 
 def staff_to_read(staff: Staff) -> StaffRead:
     # Built explicitly rather than via from_attributes: preferred_days on the ORM model is
-    # a list of PreferredDay rows, but the API represents it as a plain list[int].
+    # a list of PreferredDay rows, but the API represents it as a list of {week, day_of_week}.
     return StaffRead(
         id=staff.id,
         name=staff.name,
         active=staff.active,
         roles=[RoleRead.model_validate(r) for r in staff.roles],
-        preferred_days=sorted(pd.day_of_week for pd in staff.preferred_days),
+        preferred_days=sorted(
+            (
+                PreferredDayInput(week=pd.week, day_of_week=pd.day_of_week)
+                for pd in staff.preferred_days
+            ),
+            key=lambda p: (p.week, p.day_of_week),
+        ),
         unavailabilities=[UnavailabilityRead.model_validate(u) for u in staff.unavailabilities],
     )
 
@@ -47,7 +53,9 @@ def create_staff(db: Session, data: StaffCreate) -> Staff:
         name=data.name,
         active=data.active,
         roles=_resolve_roles(db, data.role_ids),
-        preferred_days=[PreferredDay(day_of_week=d) for d in data.preferred_days],
+        preferred_days=[
+            PreferredDay(week=p.week, day_of_week=p.day_of_week) for p in data.preferred_days
+        ],
     )
     db.add(staff)
     db.commit()
@@ -63,7 +71,15 @@ def update_staff(db: Session, staff_id: int, data: StaffUpdate) -> Staff:
     if data.role_ids is not None:
         staff.roles = _resolve_roles(db, data.role_ids)
     if data.preferred_days is not None:
-        staff.preferred_days = [PreferredDay(day_of_week=d) for d in data.preferred_days]
+        # Flushed separately so the deletes land before the inserts below — otherwise a day
+        # unchanged between old and new collides with itself under the
+        # (staff_id, week, day_of_week) UNIQUE constraint, since SQLAlchemy doesn't guarantee
+        # delete-before-insert ordering for a wholesale collection replacement.
+        staff.preferred_days.clear()
+        db.flush()
+        staff.preferred_days = [
+            PreferredDay(week=p.week, day_of_week=p.day_of_week) for p in data.preferred_days
+        ]
     db.commit()
     db.refresh(staff)
     return staff

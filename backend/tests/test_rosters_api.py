@@ -75,7 +75,12 @@ def test_manual_edit_rejects_ineligible_staff(client: TestClient) -> None:
     role = client.post("/roles", json={"name": "Senior Fellow"}).json()
     client.post(
         "/rules",
-        json={"rule_type": "eligibility_restriction", "role_id": role["id"], "tag_id": tag["id"]},
+        json={
+            "name": "ED eligibility",
+            "rule_type": "eligibility_restriction",
+            "role_id": role["id"],
+            "tag_id": tag["id"],
+        },
     )
     building = client.post(
         "/buildings", json={"name": "Hospital", "opening_minutes": 480, "closing_minutes": 720}

@@ -54,7 +54,7 @@ def _build_solver_input(
         SStaff(
             id=s.id,
             role_ids=frozenset(r.id for r in s.roles),
-            preferred_days=frozenset(pd.day_of_week for pd in s.preferred_days),
+            preferred_days=frozenset((pd.week, pd.day_of_week) for pd in s.preferred_days),
         )
         for s in db.scalars(select(Staff).where(Staff.active))
     ]

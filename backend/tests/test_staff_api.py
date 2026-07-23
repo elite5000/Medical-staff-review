@@ -16,24 +16,53 @@ def test_create_staff_with_roles_and_preferred_days(client: TestClient) -> None:
     role = _create_role(client)
     response = client.post(
         "/staff",
-        json={"name": "Dr. Alice", "role_ids": [role["id"]], "preferred_days": [0, 2, 4]},
+        json={
+            "name": "Dr. Alice",
+            "role_ids": [role["id"]],
+            "preferred_days": [
+                {"week": 0, "day_of_week": 0},
+                {"week": 0, "day_of_week": 2},
+                {"week": 1, "day_of_week": 4},
+            ],
+        },
     )
     assert response.status_code == 201
     body = response.json()
     assert body["name"] == "Dr. Alice"
     assert body["active"] is True
     assert [r["id"] for r in body["roles"]] == [role["id"]]
-    assert body["preferred_days"] == [0, 2, 4]
+    assert body["preferred_days"] == [
+        {"week": 0, "day_of_week": 0},
+        {"week": 0, "day_of_week": 2},
+        {"week": 1, "day_of_week": 4},
+    ]
     assert body["unavailabilities"] == []
 
 
 def test_create_staff_duplicate_preferred_day_rejected(client: TestClient) -> None:
-    response = client.post("/staff", json={"name": "Dr. Alice", "preferred_days": [0, 0]})
+    response = client.post(
+        "/staff",
+        json={
+            "name": "Dr. Alice",
+            "preferred_days": [{"week": 0, "day_of_week": 0}, {"week": 0, "day_of_week": 0}],
+        },
+    )
     assert response.status_code == 422
 
 
 def test_create_staff_invalid_day_of_week_rejected(client: TestClient) -> None:
-    response = client.post("/staff", json={"name": "Dr. Alice", "preferred_days": [7]})
+    response = client.post(
+        "/staff",
+        json={"name": "Dr. Alice", "preferred_days": [{"week": 0, "day_of_week": 7}]},
+    )
+    assert response.status_code == 422
+
+
+def test_create_staff_invalid_week_rejected(client: TestClient) -> None:
+    response = client.post(
+        "/staff",
+        json={"name": "Dr. Alice", "preferred_days": [{"week": 2, "day_of_week": 0}]},
+    )
     assert response.status_code == 422
 
 
@@ -44,13 +73,61 @@ def test_update_staff_roles_and_preferred_days(client: TestClient) -> None:
 
     response = client.patch(
         f"/staff/{staff['id']}",
-        json={"role_ids": [role_b["id"]], "preferred_days": [1], "active": False},
+        json={
+            "role_ids": [role_b["id"]],
+            "preferred_days": [{"week": 1, "day_of_week": 1}],
+            "active": False,
+        },
     )
     assert response.status_code == 200
     body = response.json()
     assert [r["id"] for r in body["roles"]] == [role_b["id"]]
-    assert body["preferred_days"] == [1]
+    assert body["preferred_days"] == [{"week": 1, "day_of_week": 1}]
     assert body["active"] is False
+
+
+def test_preferred_day_can_differ_between_weeks(client: TestClient) -> None:
+    """The same day_of_week may be preferred in one week but not the other."""
+    staff = client.post(
+        "/staff",
+        json={
+            "name": "Dr. Alice",
+            "preferred_days": [
+                {"week": 0, "day_of_week": 0},
+                {"week": 1, "day_of_week": 1},
+            ],
+        },
+    ).json()
+    body = client.get(f"/staff/{staff['id']}").json()
+    assert body["preferred_days"] == [
+        {"week": 0, "day_of_week": 0},
+        {"week": 1, "day_of_week": 1},
+    ]
+
+
+def test_update_preferred_days_overlapping_with_existing(client: TestClient) -> None:
+    """Regression test: updating preferred_days used to 500 whenever the new set kept a day
+    that was already preferred, because the old row's delete and the new row's insert could
+    race under the (staff_id, week, day_of_week) UNIQUE constraint."""
+    staff = client.post(
+        "/staff",
+        json={"name": "Dr. Alice", "preferred_days": [{"week": 0, "day_of_week": 0}]},
+    ).json()
+
+    response = client.patch(
+        f"/staff/{staff['id']}",
+        json={
+            "preferred_days": [
+                {"week": 0, "day_of_week": 0},
+                {"week": 1, "day_of_week": 4},
+            ]
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["preferred_days"] == [
+        {"week": 0, "day_of_week": 0},
+        {"week": 1, "day_of_week": 4},
+    ]
 
 
 def test_add_and_remove_unavailability(client: TestClient) -> None:

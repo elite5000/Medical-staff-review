@@ -65,8 +65,10 @@ test('creates a practice from scratch and generates a roster satisfying its rule
   await expect(page.getByLabel('Name')).toHaveValue(staffName);
 
   // A tag-scoped minimum-count rule: the ED needs at least 1 Senior Fellow at all times.
+  const ruleName = `ED minimum staffing ${suffix}`;
   await page.getByRole('link', { name: 'Rules' }).click();
   await page.getByRole('link', { name: 'New Rule' }).click();
+  await page.getByLabel('Name').fill(ruleName);
   await page.getByLabel('Rule type').selectOption('minimum_count');
   await page.getByLabel('Role').selectOption({ label: roleName });
   await page.getByLabel('Applies to').selectOption('tag');

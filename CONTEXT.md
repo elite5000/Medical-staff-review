@@ -18,7 +18,7 @@ A constraint the roster must satisfy. Exactly two shapes: a **minimum-count rule
 A block of time of the app-wide Shift Length, during which one Staff member occupies one Room.
 
 **Preferred Days**:
-A Staff member's standing, recurring day-of-week preference (e.g. "Mon, Wed, Fri"), applied to both weeks of every fortnightly roster. A soft goal — the roster may break it.
+A Staff member's standing, recurring day-of-week preference (e.g. "Mon, Wed, Fri"), set independently per week of the fortnight — a Staff member may prefer Monday in week 1 and Tuesday in week 2. The pattern repeats every two weeks for rosters longer than a fortnight. A soft goal — the roster may break it.
 _Avoid_: Availability (see Unavailability, which is the hard counterpart)
 
 **Unavailability**:

@@ -57,11 +57,16 @@ describe('RuleFormPage', () => {
     render(RuleFormPage);
     await waitFor(() => expect(screen.getByText('Hospital')).toBeTruthy());
 
+    const nameInput = screen.getByLabelText('Name') as HTMLInputElement;
+    nameInput.value = 'ED minimum staffing';
+    nameInput.dispatchEvent(new Event('input'));
+
     screen.getByText('Save').closest('form')?.requestSubmit();
 
     await waitFor(() =>
       expect(mockedApi.POST).toHaveBeenCalledWith('/rules', {
         body: {
+          name: 'ED minimum staffing',
           rule_type: 'minimum_count',
           role_id: 1,
           minimum_count: 1,
@@ -86,6 +91,10 @@ describe('RuleFormPage', () => {
     render(RuleFormPage);
     await waitFor(() => expect(screen.getByText('Hospital')).toBeTruthy());
 
+    const nameInput = screen.getByLabelText('Name') as HTMLInputElement;
+    nameInput.value = 'ED eligibility';
+    nameInput.dispatchEvent(new Event('input'));
+
     const user = userEvent.setup();
     await user.selectOptions(
       screen.getByLabelText('Rule type'),
@@ -97,7 +106,12 @@ describe('RuleFormPage', () => {
 
     await waitFor(() =>
       expect(mockedApi.POST).toHaveBeenCalledWith('/rules', {
-        body: { rule_type: 'eligibility_restriction', role_id: 1, tag_id: 100 },
+        body: {
+          name: 'ED eligibility',
+          rule_type: 'eligibility_restriction',
+          role_id: 1,
+          tag_id: 100,
+        },
       }),
     );
   });

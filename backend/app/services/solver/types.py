@@ -27,7 +27,9 @@ class SolverRoom:
 class SolverStaff:
     id: int
     role_ids: frozenset[int]
-    preferred_days: frozenset[int]  # 0 = Monday ... 6 = Sunday
+    # (week, day_of_week): week 0 = week 1, week 1 = week 2 of the fortnight;
+    # day_of_week 0 = Monday ... 6 = Sunday.
+    preferred_days: frozenset[tuple[int, int]]
 
 
 @dataclass(frozen=True)

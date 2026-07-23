@@ -404,6 +404,16 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /**
+         * PreferredDayInput
+         * @description week: 0 = week 1, 1 = week 2 of the fortnight. day_of_week: 0 = Monday ... 6 = Sunday.
+         */
+        PreferredDayInput: {
+            /** Week */
+            week: number;
+            /** Day Of Week */
+            day_of_week: number;
+        };
         /** RoleCreate */
         RoleCreate: {
             /** Name */
@@ -543,6 +553,8 @@ export interface components {
         };
         /** RuleCreate */
         RuleCreate: {
+            /** Name */
+            name: string;
             rule_type: components["schemas"]["RuleType"];
             /** Role Id */
             role_id: number;
@@ -555,6 +567,8 @@ export interface components {
         };
         /** RuleRead */
         RuleRead: {
+            /** Name */
+            name: string;
             rule_type: components["schemas"]["RuleType"];
             /** Role Id */
             role_id: number;
@@ -631,7 +645,7 @@ export interface components {
              * Preferred Days
              * @default []
              */
-            preferred_days: number[];
+            preferred_days: components["schemas"]["PreferredDayInput"][];
         };
         /** StaffRead */
         StaffRead: {
@@ -644,7 +658,7 @@ export interface components {
             /** Roles */
             roles: components["schemas"]["RoleRead"][];
             /** Preferred Days */
-            preferred_days: number[];
+            preferred_days: components["schemas"]["PreferredDayInput"][];
             /** Unavailabilities */
             unavailabilities: components["schemas"]["UnavailabilityRead"][];
         };
@@ -657,7 +671,7 @@ export interface components {
             /** Role Ids */
             role_ids?: number[] | null;
             /** Preferred Days */
-            preferred_days?: number[] | null;
+            preferred_days?: components["schemas"]["PreferredDayInput"][] | null;
         };
         /** TagCreate */
         TagCreate: {

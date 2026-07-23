@@ -283,10 +283,13 @@ def solve_roster(data: RosterSolveInput) -> RosterSolveResult:
         if not staff.preferred_days:
             continue
         for day in dates:
+            # Cycles every 2 weeks from start_date, so the pattern still repeats correctly
+            # for rosters longer than a single fortnight.
+            week = ((day - data.start_date).days // 7) % 2
             day_vars = assign_by_staff_day.get((staff.id, day), [])
             weight = (
                 -_WEIGHT_PREFERRED_DAY
-                if day.weekday() in staff.preferred_days
+                if (week, day.weekday()) in staff.preferred_days
                 else _WEIGHT_PREFERRED_DAY
             )
             objective_terms.extend(weight * v for v in day_vars)

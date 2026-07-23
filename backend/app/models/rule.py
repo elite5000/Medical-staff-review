@@ -42,6 +42,7 @@ class Rule(Base):
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column()
     # values_callable: store the enum's *value* ("minimum_count") in the DB column, not its
     # member name ("MINIMUM_COUNT") — SQLAlchemy's default, which the ck_rule_shape CHECK
     # constraint above (written against the lowercase values) would otherwise never match.

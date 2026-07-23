@@ -2,8 +2,10 @@
   import { link } from 'svelte-spa-router';
 
   import { api } from '../../lib/api/client';
+  import { resizableColumns } from '../../lib/actions/resizableColumns';
   import type { components } from '../../lib/api/schema';
   import ErrorBanner from '../../lib/components/ErrorBanner.svelte';
+  import TableSearch from '../../lib/components/TableSearch.svelte';
 
   type Rule = components['schemas']['RuleRead'];
   type Role = components['schemas']['RoleRead'];
@@ -15,6 +17,11 @@
   let buildingsById: Map<number, Building> = $state(new Map());
   let tagsById: Map<number, Tag> = $state(new Map());
   let error: string | null = $state(null);
+  let query = $state('');
+
+  const filteredRules = $derived(
+    rules.filter((r) => r.name.toLowerCase().includes(query.toLowerCase())),
+  );
 
   async function load() {
     const [rulesRes, rolesRes, buildingsRes, tagsRes] = await Promise.all([
@@ -64,9 +71,12 @@
   <a href="/rules/new" use:link>New Rule</a>
 </div>
 
-<table>
+<TableSearch bind:value={query} placeholder="Search rules…" />
+
+<table use:resizableColumns>
   <thead>
     <tr>
+      <th>Name</th>
       <th>Type</th>
       <th>Role</th>
       <th>Target</th>
@@ -75,8 +85,9 @@
     </tr>
   </thead>
   <tbody>
-    {#each rules as rule (rule.id)}
+    {#each filteredRules as rule (rule.id)}
       <tr>
+        <td>{rule.name}</td>
         <td
           >{rule.rule_type === 'minimum_count'
             ? 'Minimum count'
