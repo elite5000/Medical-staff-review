@@ -8,7 +8,12 @@ from app.models.roster import ViolationType
 class RosterGenerateRequest(BaseModel):
     start_date: date
     # A 0 or negative value would let _persist_result compute an end_date before start_date.
-    num_days: int = Field(default=14, ge=1)
+    # The upper bound of 14 matches the fortnight this app is scoped to (see CONTEXT.md's
+    # Roster entry) and the solver's fixed objective weights, which are only guaranteed to
+    # preserve strict soft-goal priority for len(dates) <= 14 (see the comment above
+    # _WEIGHT_MINIMUM_COUNT in app/services/solver/model.py) — a much longer roster could
+    # accumulate enough lower-tier terms to outweigh a higher tier.
+    num_days: int = Field(default=14, ge=1, le=14)
 
 
 class ShiftRead(BaseModel):

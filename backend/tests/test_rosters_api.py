@@ -108,6 +108,13 @@ def test_generate_roster_rejects_non_positive_num_days(client: TestClient) -> No
     assert response.status_code == 422
 
 
+def test_generate_roster_rejects_num_days_beyond_a_fortnight(client: TestClient) -> None:
+    # The solver's fixed objective weights only guarantee strict soft-goal priority for
+    # rosters up to 14 days (see the comment on RosterGenerateRequest.num_days).
+    response = client.post("/rosters", json={"start_date": "2026-08-03", "num_days": 15})
+    assert response.status_code == 422
+
+
 def test_manual_edit_rejects_inactive_staff(client: TestClient) -> None:
     ctx = _setup_simple_scenario(client)
     roster = client.post("/rosters", json={"start_date": "2026-08-03", "num_days": 1}).json()
@@ -196,6 +203,50 @@ def test_manual_edit_rejects_overlap_across_differing_shift_indexes(client: Test
         f"/rosters/{roster['id']}/shifts/{shift_b0['id']}", json={"staff_id": staff_a["id"]}
     )
     assert response.status_code == 409
+
+
+def test_manual_edit_rejects_exceeding_max_daily_hours(client: TestClient) -> None:
+    """Every assigned block counts toward Max Daily Hours, even ones that don't overlap or
+    need Travel Time to fit alongside the staff member's other shifts that day — a manual
+    edit must enforce the daily cap too, not just time conflicts."""
+    staff_a = client.post("/staff", json={"name": "Dr. Alice"}).json()
+    # Bob prefers a day other than the roster date (2026-08-03 is a Monday, day_of_week 0),
+    # so the solver only assigns him the one block Alice's Max Daily Hours cap can't absorb
+    # — deterministically leaving Alice with exactly 3 of the 4 blocks.
+    staff_b = client.post(
+        "/staff",
+        json={"name": "Dr. Bob", "preferred_days": [{"week": 0, "day_of_week": 2}]},
+    ).json()
+
+    rooms = []
+    for i, (opening, closing) in enumerate([(0, 240), (300, 540), (600, 840), (900, 1140)]):
+        building = client.post(
+            "/buildings",
+            json={
+                "name": f"Building {i}",
+                "opening_minutes": opening,
+                "closing_minutes": closing,
+            },
+        ).json()
+        room = client.post(
+            "/rooms", json={"name": f"Room {i}", "building_id": building["id"], "tag_ids": []}
+        ).json()
+        rooms.append(room)
+
+    roster = client.post("/rosters", json={"start_date": "2026-08-03", "num_days": 1}).json()
+    detail = client.get(f"/rosters/{roster['id']}").json()
+    assert len(detail["shifts"]) == 4
+
+    alice_shifts = [s for s in detail["shifts"] if s["staff_id"] == staff_a["id"]]
+    bob_shifts = [s for s in detail["shifts"] if s["staff_id"] == staff_b["id"]]
+    assert len(alice_shifts) == 3
+    assert len(bob_shifts) == 1
+
+    response = client.patch(
+        f"/rosters/{roster['id']}/shifts/{bob_shifts[0]['id']}", json={"staff_id": staff_a["id"]}
+    )
+    assert response.status_code == 409
+    assert "Max Daily Hours" in response.json()["detail"]
 
 
 def test_manual_edit_rejects_double_booking(client: TestClient) -> None:

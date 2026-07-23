@@ -11,7 +11,10 @@
 
   let name = $state('');
   let openingTime = $state('08:00');
-  let closingTime = $state('18:00');
+  // 08:00-16:00 divides evenly into the default 240-minute Shift Length (two 4-hour
+  // blocks) — the earlier 18:00 default left a 2-hour remainder that solve_roster now
+  // rejects outright (see IndivisibleBuildingHoursError) rather than silently dropping it.
+  let closingTime = $state('16:00');
   let error: string | null = $state(null);
 
   async function load(id: number) {

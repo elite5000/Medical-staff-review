@@ -42,7 +42,7 @@ describe('BuildingFormPage', () => {
 
     await waitFor(() =>
       expect(mockedApi.POST).toHaveBeenCalledWith('/buildings', {
-        body: { name: 'Clinic', opening_minutes: 480, closing_minutes: 1080 },
+        body: { name: 'Clinic', opening_minutes: 480, closing_minutes: 960 },
       }),
     );
   });

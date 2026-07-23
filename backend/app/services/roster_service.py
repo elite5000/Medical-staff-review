@@ -276,14 +276,29 @@ def set_shift_staff(db: Session, roster_id: int, shift_id: int, staff_id: int) -
     # opening hours, so every other shift the staff member has this day must be checked via
     # the same timing math the solver itself uses (see app/services/solver/timing.py).
     settings = get_settings(db)
-    other_shifts_today = db.scalars(
-        select(Shift).where(
-            Shift.roster_id == roster_id,
-            Shift.staff_id == staff_id,
-            Shift.date == shift.date,
-            Shift.id != shift.id,
+    other_shifts_today = list(
+        db.scalars(
+            select(Shift).where(
+                Shift.roster_id == roster_id,
+                Shift.staff_id == staff_id,
+                Shift.date == shift.date,
+                Shift.id != shift.id,
+            )
         )
     )
+
+    # Every assigned block counts toward Max Daily Hours, not just the ones that overlap or
+    # sit too close to travel between — the solver's cap is a plain per-day block count.
+    max_blocks_per_day = (
+        settings.max_daily_minutes // settings.shift_length_minutes
+        if settings.shift_length_minutes
+        else 0
+    )
+    if len(other_shifts_today) + 1 > max_blocks_per_day:
+        raise HTTPException(
+            status_code=409, detail="Staff member would exceed Max Daily Hours on this date"
+        )
+
     for other in other_shifts_today:
         if shifts_conflict(
             shift.room.building_id,

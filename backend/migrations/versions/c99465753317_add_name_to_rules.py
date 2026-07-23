@@ -29,9 +29,14 @@ def upgrade() -> None:
     op.add_column("rules", sa.Column("name", sa.String(), nullable=True))
     op.execute("UPDATE rules SET name = 'Untitled rule #' || id WHERE name IS NULL")
 
-    op.execute("ALTER TABLE rules RENAME TO rules_old")
+    # rules is itself an FK target (roster_violations.rule_id), and SQLite's RENAME TABLE
+    # rewrites *other* tables' FK definitions to follow the renamed table. Renaming rules
+    # away first (the more obvious approach) would leave roster_violations referencing the
+    # temporary name, then dangling once that table is dropped. Building the replacement
+    # under a temporary name and renaming *it* into place at the end avoids ever renaming
+    # the table other rows still reference.
     op.create_table(
-        "rules",
+        "rules_new",
         sa.Column("id", sa.Integer(), nullable=False),
         sa.Column("name", sa.String(), nullable=False),
         sa.Column(
@@ -58,10 +63,11 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
     )
     op.execute(
-        "INSERT INTO rules (id, name, rule_type, role_id, building_id, tag_id, minimum_count) "
-        "SELECT id, name, rule_type, role_id, building_id, tag_id, minimum_count FROM rules_old"
+        "INSERT INTO rules_new (id, name, rule_type, role_id, building_id, tag_id, minimum_count) "
+        "SELECT id, name, rule_type, role_id, building_id, tag_id, minimum_count FROM rules"
     )
-    op.execute("DROP TABLE rules_old")
+    op.execute("DROP TABLE rules")
+    op.execute("ALTER TABLE rules_new RENAME TO rules")
 
 
 def downgrade() -> None:
