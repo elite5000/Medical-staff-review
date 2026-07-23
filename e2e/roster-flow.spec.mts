@@ -26,7 +26,7 @@ test('creates a practice from scratch and generates a roster satisfying its rule
   await page.getByRole('link', { name: 'New Building' }).click();
   await page.getByLabel('Name').fill(buildingName);
   await page.getByLabel('Opening time').fill('08:00');
-  await page.getByLabel('Closing time').fill('18:00');
+  await page.getByLabel('Closing time').fill('16:00');
   await page.getByRole('button', { name: 'Save' }).click();
   await expect(page).toHaveURL(/#\/buildings$/);
   await expect(page.getByText(buildingName)).toBeVisible();
@@ -92,7 +92,7 @@ test('creates a practice from scratch and generates a roster satisfying its rule
 
   await expect(page).toHaveURL(/#\/rosters\/\d+$/);
   await expect(page.getByRole('heading', { name: 'Violations' })).toBeHidden();
-  // The 08:00-18:00 opening hours divide into two 4-hour shift blocks, so the room
+  // The 08:00-16:00 opening hours divide into two 4-hour shift blocks, so the room
   // appears twice — once per block.
   await expect(page.getByText(roomName).first()).toBeVisible();
   // The lone qualifying staff member must be assigned to every shift block in the ED
