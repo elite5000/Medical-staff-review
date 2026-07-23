@@ -47,7 +47,11 @@ nav {
   height: 1.4rem;
   flex: 0 0 auto;
   border-radius: 0.4rem;
-  background: linear-gradient(135deg, var(--accent), light-dark(#7ba1ff, #2f5fdd));
+  background: linear-gradient(
+    135deg,
+    var(--accent),
+    light-dark(#7ba1ff, #2f5fdd)
+  );
 }
 
 nav ul {

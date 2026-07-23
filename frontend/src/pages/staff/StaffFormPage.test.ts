@@ -47,7 +47,9 @@ describe('StaffFormPage', () => {
     nameInput.dispatchEvent(new Event('input'));
 
     screen.getByLabelText('Senior Fellow').click();
-    const week1Group = screen.getByRole('group', { name: 'Preferred days — Week 1' });
+    const week1Group = screen.getByRole('group', {
+      name: 'Preferred days — Week 1',
+    });
     within(week1Group).getByLabelText('Mon').click();
     screen.getByText('Save').closest('form')?.requestSubmit();
 

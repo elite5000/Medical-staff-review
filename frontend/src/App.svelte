@@ -14,19 +14,54 @@
     icon: NavIconName;
     activePath: RegExp;
   }[] = [
-    { href: '#/rosters', label: 'Rosters', icon: 'rosters', activePath: /^\/rosters(\/|$)/ },
+    {
+      href: '#/rosters',
+      label: 'Rosters',
+      icon: 'rosters',
+      activePath: /^\/rosters(\/|$)/,
+    },
     {
       href: '#/buildings',
       label: 'Buildings',
       icon: 'buildings',
       activePath: /^\/buildings(\/|$)/,
     },
-    { href: '#/rooms', label: 'Rooms', icon: 'rooms', activePath: /^\/rooms(\/|$)/ },
-    { href: '#/tags', label: 'Tags', icon: 'tags', activePath: /^\/tags(\/|$)/ },
-    { href: '#/roles', label: 'Roles', icon: 'roles', activePath: /^\/roles(\/|$)/ },
-    { href: '#/staff', label: 'Staff', icon: 'staff', activePath: /^\/staff(\/|$)/ },
-    { href: '#/rules', label: 'Rules', icon: 'rules', activePath: /^\/rules(\/|$)/ },
-    { href: '#/settings', label: 'Settings', icon: 'settings', activePath: /^\/settings(\/|$)/ },
+    {
+      href: '#/rooms',
+      label: 'Rooms',
+      icon: 'rooms',
+      activePath: /^\/rooms(\/|$)/,
+    },
+    {
+      href: '#/tags',
+      label: 'Tags',
+      icon: 'tags',
+      activePath: /^\/tags(\/|$)/,
+    },
+    {
+      href: '#/roles',
+      label: 'Roles',
+      icon: 'roles',
+      activePath: /^\/roles(\/|$)/,
+    },
+    {
+      href: '#/staff',
+      label: 'Staff',
+      icon: 'staff',
+      activePath: /^\/staff(\/|$)/,
+    },
+    {
+      href: '#/rules',
+      label: 'Rules',
+      icon: 'rules',
+      activePath: /^\/rules(\/|$)/,
+    },
+    {
+      href: '#/settings',
+      label: 'Settings',
+      icon: 'settings',
+      activePath: /^\/settings(\/|$)/,
+    },
   ];
 </script>
 

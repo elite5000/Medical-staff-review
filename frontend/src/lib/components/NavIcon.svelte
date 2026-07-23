@@ -29,8 +29,6 @@
   {:else if name === 'buildings'}
     <rect x="4.5" y="3.5" width="15" height="17" rx="1" />
     <rect x="9.5" y="14" width="5" height="6.5" />
-    <line x1="7.5" y1="7.5" x2="7.5" y2="7.5" />
-    <line x1="8" y1="7.5" x2="8" y2="7.5" />
     <rect x="7.2" y="7" width="1.6" height="1.6" />
     <rect x="11.2" y="7" width="1.6" height="1.6" />
     <rect x="15.2" y="7" width="1.6" height="1.6" />

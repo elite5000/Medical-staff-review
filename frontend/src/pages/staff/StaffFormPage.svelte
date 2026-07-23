@@ -62,9 +62,10 @@
     selectedPreferredDaysWeek1.clear();
     selectedPreferredDaysWeek2.clear();
     for (const pd of data.preferred_days) {
-      (pd.week === 0 ? selectedPreferredDaysWeek1 : selectedPreferredDaysWeek2).add(
-        pd.day_of_week,
-      );
+      (pd.week === 0
+        ? selectedPreferredDaysWeek1
+        : selectedPreferredDaysWeek2
+      ).add(pd.day_of_week);
     }
     unavailabilities = data.unavailabilities;
   }

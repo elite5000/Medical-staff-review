@@ -64,6 +64,9 @@
   });
 
   const unavailableByDay = $derived.by(() => {
+    // Plain Map: a local scratch value fully rebuilt (and returned as a snapshot) each time
+    // this derived recomputes, not reactive state needing SvelteMap's mutation tracking.
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity
     const map = new Map<number, { staff: Staff; reason: string | null }[]>();
     const monthStart = toISO(viewYear, viewMonth, 1);
     const monthEnd = toISO(viewYear, viewMonth, daysInMonth);
@@ -89,6 +92,8 @@
   });
 
   const legendStaff = $derived.by(() => {
+    // Same reasoning as unavailableByDay above: a local scratch value, not reactive state.
+    // eslint-disable-next-line svelte/prefer-svelte-reactivity
     const ids = new Set<number>();
     for (const list of unavailableByDay.values()) {
       for (const entry of list) ids.add(entry.staff.id);

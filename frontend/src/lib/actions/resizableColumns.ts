@@ -52,7 +52,9 @@ export function resizableColumns(table: HTMLTableElement) {
 
     handle.addEventListener('pointerdown', onPointerDown);
     th.appendChild(handle);
-    cleanupFns.push(() => handle.removeEventListener('pointerdown', onPointerDown));
+    cleanupFns.push(() =>
+      handle.removeEventListener('pointerdown', onPointerDown),
+    );
   }
 
   return {
