@@ -1,5 +1,8 @@
 from datetime import date
 
+import pytest
+
+from app.services.solver.errors import IndivisibleBuildingHoursError, RosterInfeasibleError
 from app.services.solver.model import solve_roster
 from app.services.solver.types import (
     EligibilityRule,
@@ -177,3 +180,54 @@ def test_pinned_shift_is_always_present_in_result() -> None:
         )
     )
     assert any(s.staff_id == 1 and s.room_id == 1 and s.pinned for s in result.shifts)
+
+
+def test_indivisible_building_hours_rejected() -> None:
+    """08:00-18:00 with 240-minute shifts leaves a 2-hour remainder that would otherwise be
+    silently uncovered by any block and never flagged as unfilled."""
+    building = SolverBuilding(id=1, opening_minutes=480, closing_minutes=1080)  # 08:00-18:00
+    room = SolverRoom(id=1, building_id=1, tag_ids=frozenset())
+    staff = SolverStaff(id=1, role_ids=frozenset(), preferred_days=frozenset())
+
+    with pytest.raises(IndivisibleBuildingHoursError):
+        solve_roster(
+            RosterSolveInput(
+                start_date=START,
+                num_days=1,
+                shift_length_minutes=240,
+                travel_time_minutes=0,
+                max_daily_minutes=720,
+                buildings=[building],
+                rooms=[room],
+                staff=[staff],
+            )
+        )
+
+
+def test_infeasible_conflicting_pins_raise_clear_error() -> None:
+    """Two pinned shifts that physically overlap in wall-clock time for the same staff
+    member can never both be satisfied — the solver must report this clearly rather than
+    silently violate the one-room-per-person constraint or crash reading solver values."""
+    building_a = SolverBuilding(id=1, opening_minutes=480, closing_minutes=720)
+    building_b = SolverBuilding(id=2, opening_minutes=480, closing_minutes=720)
+    room_a = SolverRoom(id=1, building_id=1, tag_ids=frozenset())
+    room_b = SolverRoom(id=2, building_id=2, tag_ids=frozenset())
+    staff = SolverStaff(id=1, role_ids=frozenset(), preferred_days=frozenset())
+
+    with pytest.raises(RosterInfeasibleError):
+        solve_roster(
+            RosterSolveInput(
+                start_date=START,
+                num_days=1,
+                shift_length_minutes=240,
+                travel_time_minutes=30,
+                max_daily_minutes=720,
+                buildings=[building_a, building_b],
+                rooms=[room_a, room_b],
+                staff=[staff],
+                pinned_shifts=[
+                    PinnedShift(staff_id=1, room_id=1, date=START, shift_index=0),
+                    PinnedShift(staff_id=1, room_id=2, date=START, shift_index=0),
+                ],
+            )
+        )

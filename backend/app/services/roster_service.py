@@ -19,7 +19,13 @@ from app.models.settings import AppSettings
 from app.models.shift import Shift
 from app.models.staff import Staff
 from app.services.settings_service import get_settings
+from app.services.solver.errors import (
+    IndivisibleBuildingHoursError,
+    InvalidPinnedShiftsError,
+    RosterInfeasibleError,
+)
 from app.services.solver.model import solve_roster
+from app.services.solver.timing import shifts_conflict
 from app.services.solver.types import (
     EligibilityRule,
     MinimumCountRule,
@@ -97,6 +103,26 @@ def _build_solver_input(
     )
 
 
+def _solve(solver_input: RosterSolveInput) -> RosterSolveResult:
+    """Runs the pure solver and translates its hard-constraint-conflict exceptions into
+    HTTPExceptions the API can return, instead of letting a 500 or a silently-wrong roster
+    reach the caller."""
+    try:
+        return solve_roster(solver_input)
+    except IndivisibleBuildingHoursError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except InvalidPinnedShiftsError as exc:
+        detail = "; ".join(
+            f"staff {p.staff_id} / room {p.room_id} / {p.date} slot {p.shift_index}: {p.reason}"
+            for p in exc.invalid_pins
+        )
+        raise HTTPException(
+            status_code=409, detail=f"Pinned shift(s) no longer valid: {detail}"
+        ) from exc
+    except RosterInfeasibleError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
 def _persist_result(
     db: Session,
     result: RosterSolveResult,
@@ -158,7 +184,7 @@ def generate_roster(db: Session, start_date: date, num_days: int = DEFAULT_NUM_D
     """A fresh generation for a date range — no prior pinned assignments to carry forward."""
     settings = get_settings(db)
     solver_input = _build_solver_input(db, start_date, num_days, settings, pinned_shifts=[])
-    result = solve_roster(solver_input)
+    result = _solve(solver_input)
     return _persist_result(db, result, start_date, num_days, generated_from_roster_id=None)
 
 
@@ -185,7 +211,7 @@ def regenerate_roster(db: Session, roster_id: int) -> Roster:
     solver_input = _build_solver_input(
         db, previous.start_date, num_days, settings, pinned_shifts=pinned_shifts
     )
-    result = solve_roster(solver_input)
+    result = _solve(solver_input)
     return _persist_result(
         db, result, previous.start_date, num_days, generated_from_roster_id=roster_id
     )
@@ -231,6 +257,9 @@ def set_shift_staff(db: Session, roster_id: int, shift_id: int, staff_id: int) -
     if staff is None:
         raise HTTPException(status_code=422, detail=f"Unknown staff_id: {staff_id}")
 
+    if not staff.active:
+        raise HTTPException(status_code=409, detail="Staff member is inactive")
+
     if not _staff_eligible_for_room(db, staff, shift.room):
         raise HTTPException(
             status_code=409, detail="Staff member is not eligible for this Room's Tags"
@@ -242,19 +271,37 @@ def set_shift_staff(db: Session, roster_id: int, shift_id: int, staff_id: int) -
             status_code=409, detail="Staff member is marked unavailable on this date"
         )
 
-    already_booked = db.scalar(
-        select(Shift.id).where(
+    # Building-relative shift_index alone doesn't tell us whether two shifts overlap in wall
+    # clock time or leave enough Travel Time gap — that depends on each shift's Building's
+    # opening hours, so every other shift the staff member has this day must be checked via
+    # the same timing math the solver itself uses (see app/services/solver/timing.py).
+    settings = get_settings(db)
+    other_shifts_today = db.scalars(
+        select(Shift).where(
             Shift.roster_id == roster_id,
             Shift.staff_id == staff_id,
             Shift.date == shift.date,
-            Shift.shift_index == shift.shift_index,
             Shift.id != shift.id,
         )
     )
-    if already_booked:
-        raise HTTPException(
-            status_code=409, detail="Staff member is already assigned to another room this slot"
-        )
+    for other in other_shifts_today:
+        if shifts_conflict(
+            shift.room.building_id,
+            shift.room.building.opening_minutes,
+            shift.shift_index,
+            other.room.building_id,
+            other.room.building.opening_minutes,
+            other.shift_index,
+            settings.shift_length_minutes,
+            settings.travel_time_minutes,
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "Staff member already has a shift this day that overlaps or doesn't "
+                    "leave enough Travel Time"
+                ),
+            )
 
     shift.staff_id = staff_id
     shift.pinned = True

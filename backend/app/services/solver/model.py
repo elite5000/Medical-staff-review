@@ -19,6 +19,13 @@ from datetime import date, timedelta
 
 from ortools.sat.python import cp_model
 
+from app.services.solver.errors import (
+    IndivisibleBuildingHoursError,
+    InvalidPinnedShift,
+    InvalidPinnedShiftsError,
+    RosterInfeasibleError,
+)
+from app.services.solver.timing import windows_conflict
 from app.services.solver.types import (
     MinimumCountViolation,
     RoomUnfilledViolation,
@@ -51,9 +58,22 @@ class _Slot:
 
 
 def _blocks_per_day(building: SolverBuilding, shift_length_minutes: int) -> int:
-    # Assumes opening hours divide evenly into shift blocks (see CONTEXT.md's Shift entry);
-    # any remainder minutes are simply not covered by a schedulable block.
+    # See _validate_building_hours: callers must ensure the open interval divides evenly
+    # into shift blocks, so there is no remainder here to silently drop.
     return max(0, (building.closing_minutes - building.opening_minutes) // shift_length_minutes)
+
+
+def _validate_building_hours(buildings: list[SolverBuilding], shift_length_minutes: int) -> None:
+    """A Building whose open interval isn't an exact multiple of the Shift Length would
+    otherwise have its remainder minutes silently uncovered by any schedulable block (and
+    therefore never flagged as a ROOM_UNFILLED violation either)."""
+    bad = [
+        b.id
+        for b in buildings
+        if (b.closing_minutes - b.opening_minutes) % shift_length_minutes != 0
+    ]
+    if bad:
+        raise IndivisibleBuildingHoursError(bad)
 
 
 def _all_slots(
@@ -85,11 +105,15 @@ def _conflicting_slot_pairs(
         for b in slots[i + 1 :]:
             if a.room.id == b.room.id:
                 continue
-            required_gap = travel_time_minutes if a.room.building_id != b.room.building_id else 0
-            compatible = a.end_minutes + required_gap <= b.start_minutes or (
-                b.end_minutes + required_gap <= a.start_minutes
-            )
-            if not compatible:
+            if windows_conflict(
+                a.room.building_id,
+                a.start_minutes,
+                a.end_minutes,
+                b.room.building_id,
+                b.start_minutes,
+                b.end_minutes,
+                travel_time_minutes,
+            ):
                 conflicts.append((a, b))
     return conflicts
 
@@ -143,6 +167,7 @@ def solve_roster(data: RosterSolveInput) -> RosterSolveResult:
     model = cp_model.CpModel()
     dates = [data.start_date + timedelta(days=i) for i in range(data.num_days)]
     buildings_by_id = {b.id: b for b in data.buildings}
+    _validate_building_hours(data.buildings, data.shift_length_minutes)
     slots = _all_slots(data.rooms, buildings_by_id, data.shift_length_minutes)
     conflicting_pairs = _conflicting_slot_pairs(slots, data.travel_time_minutes)
 
@@ -167,7 +192,9 @@ def solve_roster(data: RosterSolveInput) -> RosterSolveResult:
     # --- Variables ---------------------------------------------------------------
     # assign[(staff_id, day, room_id, shift_index)] = 1 iff that staff works that room-slot.
     # Skipping ineligible/unavailable combos up front keeps the model small and makes two
-    # hard constraints (eligibility, Unavailability) true "for free", by construction.
+    # hard constraints (eligibility, Unavailability) true "for free", by construction. This
+    # applies uniformly to pinned combos too — a pin whose staff/room/day is no longer valid
+    # does not get a var here, and is instead caught and reported below rather than forced.
     assign: dict[tuple[int, date, int, int], cp_model.IntVar] = {}
     for staff in data.staff:
         for day in dates:
@@ -175,25 +202,47 @@ def solve_roster(data: RosterSolveInput) -> RosterSolveResult:
                 continue
             for slot in slots:
                 allowed_roles = eligible_roles_by_room[slot.room.id]
-                is_pinned = (staff.id, slot.room.id, day, slot.shift_index) in pinned_lookup
-                if not is_pinned and allowed_roles is not None:
-                    if not (staff.role_ids & allowed_roles):
-                        continue
+                if allowed_roles is not None and not (staff.role_ids & allowed_roles):
+                    continue
                 key = (staff.id, day, slot.room.id, slot.shift_index)
                 var_name = f"assign_s{staff.id}_d{day}_r{slot.room.id}_i{slot.shift_index}"
                 assign[key] = model.new_bool_var(var_name)
 
     # Pinned assignments are forced to 1 — they still flow through every aggregate below
     # (minimum-count actuals, daily-hours sums, room-fill) exactly like any other shift.
+    # A pin that no longer has a candidate var above (staff since made unavailable/inactive,
+    # no longer eligible for the room, or the room-slot no longer exists after settings/
+    # building changes) is a genuine hard-constraint conflict, not something to paper over
+    # by forcing a fresh, unconstrained var to 1 — that would let a pin bypass the very
+    # hard constraints the rest of the model exists to enforce.
+    staff_by_id = {s.id: s for s in data.staff}
+    slot_by_room_index = {(s.room.id, s.shift_index): s for s in slots}
+    invalid_pins: list[InvalidPinnedShift] = []
     for pinned in data.pinned_shifts:
         key = (pinned.staff_id, pinned.date, pinned.room_id, pinned.shift_index)
-        if key not in assign:
-            var_name = (
-                f"assign_pinned_s{pinned.staff_id}_d{pinned.date}"
-                f"_r{pinned.room_id}_i{pinned.shift_index}"
+        if key in assign:
+            model.add(assign[key] == 1)
+            continue
+
+        staff_member = staff_by_id.get(pinned.staff_id)
+        if staff_member is None or (pinned.room_id, pinned.shift_index) not in slot_by_room_index:
+            reason = "room-slot no longer exists"
+        elif _is_unavailable(pinned.staff_id, pinned.date, unavailable_ranges):
+            reason = "staff member is unavailable"
+        else:
+            reason = "staff member is no longer eligible for this room"
+        invalid_pins.append(
+            InvalidPinnedShift(
+                staff_id=pinned.staff_id,
+                room_id=pinned.room_id,
+                date=pinned.date,
+                shift_index=pinned.shift_index,
+                reason=reason,
             )
-            assign[key] = model.new_bool_var(var_name)
-        model.add(assign[key] == 1)
+        )
+
+    if invalid_pins:
+        raise InvalidPinnedShiftsError(invalid_pins)
 
     # --- Hard constraints ----------------------------------------------------------
     # One assignment per room-slot per day.
@@ -299,7 +348,11 @@ def solve_roster(data: RosterSolveInput) -> RosterSolveResult:
 
     solver = cp_model.CpSolver()
     solver.parameters.max_time_in_seconds = 30
-    solver.solve(model)
+    status = solver.solve(model)
+    if status not in (cp_model.OPTIMAL, cp_model.FEASIBLE):
+        raise RosterInfeasibleError(
+            "No assignment satisfies every hard constraint — check pinned shifts for conflicts"
+        )
 
     solved_shifts = [
         SolvedShift(
@@ -316,13 +369,13 @@ def solve_roster(data: RosterSolveInput) -> RosterSolveResult:
     minimum_count_violations = [
         MinimumCountViolation(
             rule_id=rule_id,
-            building_id=minimum_count_rules_by_id[rule_id].building_id,
+            building_id=building_id,
             tag_id=minimum_count_rules_by_id[rule_id].tag_id,
             date=day,
             shift_index=shift_index,
             shortfall=solver.value(var),
         )
-        for (rule_id, _building_id, day, shift_index), var in minimum_count_shortfall_vars.items()
+        for (rule_id, building_id, day, shift_index), var in minimum_count_shortfall_vars.items()
         if solver.value(var) > 0
     ]
 

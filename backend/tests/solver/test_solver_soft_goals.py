@@ -74,6 +74,40 @@ def test_minimum_count_shortfall_flagged_not_solver_failure() -> None:
     assert result.minimum_count_violations[0].shortfall == 1
 
 
+def test_minimum_count_violation_reports_shortfall_building_for_tag_scoped_rule() -> None:
+    """A tag-scoped Rule's own building_id is always None (see app/models/rule.py), but a
+    shortfall still happens in one specific Building — the violation must say which one
+    (from the shortfall bucket), not blindly repeat the Rule's null building_id."""
+    building_1 = SolverBuilding(id=1, opening_minutes=480, closing_minutes=720)
+    building_2 = SolverBuilding(id=2, opening_minutes=480, closing_minutes=720)
+    ed_room_1 = SolverRoom(id=1, building_id=1, tag_ids=frozenset({10}))
+    ed_room_2 = SolverRoom(id=2, building_id=2, tag_ids=frozenset({10}))
+    # Only one qualifying staff member for two Buildings that each need one: exactly one of
+    # the two per-building buckets is left short.
+    staff = SolverStaff(id=1, role_ids=frozenset({99}), preferred_days=frozenset())
+
+    result = solve_roster(
+        RosterSolveInput(
+            start_date=MONDAY,
+            num_days=1,
+            shift_length_minutes=240,
+            travel_time_minutes=0,
+            max_daily_minutes=720,
+            buildings=[building_1, building_2],
+            rooms=[ed_room_1, ed_room_2],
+            staff=[staff],
+            minimum_count_rules=[
+                MinimumCountRule(
+                    rule_id=1, role_id=99, building_id=None, tag_id=10, minimum_count=1
+                )
+            ],
+            eligibility_rules=[EligibilityRule(tag_id=10, role_id=99)],
+        )
+    )
+    assert len(result.minimum_count_violations) == 1
+    assert result.minimum_count_violations[0].building_id in {1, 2}
+
+
 def test_room_fill_outranks_preferred_days() -> None:
     """A room should still get filled on a staff member's non-preferred day rather than
     stay empty — Tier 2 always beats Tier 3."""

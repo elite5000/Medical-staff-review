@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.room import Room
+from app.models.roster import RosterViolation
 from app.models.shift import Shift
 from app.models.tag import Tag
 from app.schemas.room import RoomCreate, RoomUpdate
@@ -57,9 +58,14 @@ def update_room(db: Session, room_id: int, data: RoomUpdate) -> Room:
 
 def delete_room(db: Session, room_id: int) -> None:
     room = get_room(db, room_id)
-    # A Room that already appears in a generated Roster must not vanish from history.
+    # A Room that already appears in a generated Roster's Shifts, or that a generated
+    # Roster's violation history points at (e.g. a room that went unfilled), must not
+    # vanish from history.
     has_shifts = db.scalar(select(Shift.id).where(Shift.room_id == room_id).limit(1))
-    if has_shifts:
+    has_violations = db.scalar(
+        select(RosterViolation.id).where(RosterViolation.room_id == room_id).limit(1)
+    )
+    if has_shifts or has_violations:
         raise HTTPException(
             status_code=409,
             detail="Cannot delete a Room that appears in a generated Roster",

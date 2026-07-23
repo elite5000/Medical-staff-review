@@ -22,7 +22,12 @@ class Shift(Base):
     __tablename__ = "shifts"
     __table_args__ = (
         UniqueConstraint("roster_id", "room_id", "date", "shift_index"),
-        UniqueConstraint("roster_id", "staff_id", "date", "shift_index"),
+        # No UniqueConstraint on (roster_id, staff_id, date, shift_index): shift_index is
+        # Building-relative, so with staggered Building opening hours the *same* shift_index
+        # in two different Buildings can be non-overlapping wall-clock windows — a valid
+        # double-booking-free schedule. Real double-booking is prevented by the solver's
+        # travel-time-aware conflict check (see app/services/solver/timing.py), which
+        # roster_service.set_shift_staff also re-runs for manual edits.
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

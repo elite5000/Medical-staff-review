@@ -47,6 +47,28 @@ def test_delete_building(client: TestClient) -> None:
     assert client.get(f"/buildings/{created['id']}").status_code == 404
 
 
+def test_create_building_rejects_closing_before_opening(client: TestClient) -> None:
+    response = client.post(
+        "/buildings", json={"name": "Bad Hours", "opening_minutes": 720, "closing_minutes": 480}
+    )
+    assert response.status_code == 422
+
+
+def test_create_building_rejects_equal_opening_and_closing(client: TestClient) -> None:
+    response = client.post(
+        "/buildings", json={"name": "Bad Hours", "opening_minutes": 480, "closing_minutes": 480}
+    )
+    assert response.status_code == 422
+
+
+def test_update_building_rejects_closing_before_opening(client: TestClient) -> None:
+    created = _create_building(client)
+    response = client.patch(
+        f"/buildings/{created['id']}", json={"closing_minutes": created["opening_minutes"]}
+    )
+    assert response.status_code == 422
+
+
 def test_delete_building_with_room_conflicts(client: TestClient) -> None:
     building = _create_building(client)
     room_response = client.post(

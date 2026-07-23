@@ -29,7 +29,12 @@ def create_building(db: Session, data: BuildingCreate) -> Building:
 
 def update_building(db: Session, building_id: int, data: BuildingUpdate) -> Building:
     building = get_building(db, building_id)
-    for field, value in data.model_dump(exclude_unset=True).items():
+    updates = data.model_dump(exclude_unset=True)
+    opening_minutes = updates.get("opening_minutes", building.opening_minutes)
+    closing_minutes = updates.get("closing_minutes", building.closing_minutes)
+    if closing_minutes <= opening_minutes:
+        raise HTTPException(status_code=422, detail="closing_minutes must be after opening_minutes")
+    for field, value in updates.items():
         setattr(building, field, value)
     db.commit()
     db.refresh(building)

@@ -61,3 +61,23 @@ def test_delete_room(client: TestClient) -> None:
         "/rooms", json={"name": "Room 1", "building_id": building["id"], "tag_ids": []}
     ).json()
     assert client.delete(f"/rooms/{room['id']}").status_code == 204
+
+
+def test_delete_room_blocked_by_violation_history_without_shifts(client: TestClient) -> None:
+    """A Room can appear in a generated Roster's history purely as a ROOM_UNFILLED
+    violation, with no Shift row ever created for it (e.g. no Staff exists at all) — the
+    delete guard must still catch that, not just look for Shift rows."""
+    building = client.post(
+        "/buildings", json={"name": "Hospital", "opening_minutes": 480, "closing_minutes": 720}
+    ).json()
+    room = client.post(
+        "/rooms", json={"name": "Room 1", "building_id": building["id"], "tag_ids": []}
+    ).json()
+
+    roster = client.post("/rosters", json={"start_date": "2026-08-03", "num_days": 1}).json()
+    detail = client.get(f"/rosters/{roster['id']}").json()
+    assert any(v["room_id"] == room["id"] for v in detail["violations"])
+    assert all(s["room_id"] != room["id"] for s in detail["shifts"])
+
+    response = client.delete(f"/rooms/{room['id']}")
+    assert response.status_code == 409

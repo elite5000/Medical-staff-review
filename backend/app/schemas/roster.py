@@ -1,13 +1,14 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.roster import ViolationType
 
 
 class RosterGenerateRequest(BaseModel):
     start_date: date
-    num_days: int = 14
+    # A 0 or negative value would let _persist_result compute an end_date before start_date.
+    num_days: int = Field(default=14, ge=1)
 
 
 class ShiftRead(BaseModel):
