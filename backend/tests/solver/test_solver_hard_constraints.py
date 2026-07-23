@@ -204,6 +204,30 @@ def test_indivisible_building_hours_rejected() -> None:
         )
 
 
+def test_indivisible_hours_ignored_for_building_with_no_rooms() -> None:
+    """A Building with no Rooms never produces a slot in the first place (see _all_slots),
+    so its hours are irrelevant to this roster — it must not block generation for an
+    unrelated Building that happens to also exist in the system."""
+    unrelated_building = SolverBuilding(id=1, opening_minutes=480, closing_minutes=1080)
+    used_building = SolverBuilding(id=2, opening_minutes=480, closing_minutes=720)
+    room = SolverRoom(id=1, building_id=2, tag_ids=frozenset())
+    staff = SolverStaff(id=1, role_ids=frozenset(), preferred_days=frozenset())
+
+    result = solve_roster(
+        RosterSolveInput(
+            start_date=START,
+            num_days=1,
+            shift_length_minutes=240,
+            travel_time_minutes=0,
+            max_daily_minutes=720,
+            buildings=[unrelated_building, used_building],
+            rooms=[room],
+            staff=[staff],
+        )
+    )
+    assert len(result.shifts) == 1
+
+
 def test_infeasible_conflicting_pins_raise_clear_error() -> None:
     """Two pinned shifts that physically overlap in wall-clock time for the same staff
     member can never both be satisfied — the solver must report this clearly rather than

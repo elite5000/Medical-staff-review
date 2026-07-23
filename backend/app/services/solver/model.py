@@ -63,14 +63,21 @@ def _blocks_per_day(building: SolverBuilding, shift_length_minutes: int) -> int:
     return max(0, (building.closing_minutes - building.opening_minutes) // shift_length_minutes)
 
 
-def _validate_building_hours(buildings: list[SolverBuilding], shift_length_minutes: int) -> None:
+def _validate_building_hours(
+    buildings: list[SolverBuilding], rooms: list[SolverRoom], shift_length_minutes: int
+) -> None:
     """A Building whose open interval isn't an exact multiple of the Shift Length would
     otherwise have its remainder minutes silently uncovered by any schedulable block (and
-    therefore never flagged as a ROOM_UNFILLED violation either)."""
+    therefore never flagged as a ROOM_UNFILLED violation either). Only Buildings that
+    actually have a Room are checked — an empty Building never produces a slot in the first
+    place (see _all_slots, which only ever looks up a Building via a Room's building_id), so
+    its hours are irrelevant to this roster and must not block generation."""
+    building_ids_with_rooms = {room.building_id for room in rooms}
     bad = [
         b.id
         for b in buildings
-        if (b.closing_minutes - b.opening_minutes) % shift_length_minutes != 0
+        if b.id in building_ids_with_rooms
+        and (b.closing_minutes - b.opening_minutes) % shift_length_minutes != 0
     ]
     if bad:
         raise IndivisibleBuildingHoursError(bad)
@@ -167,7 +174,7 @@ def solve_roster(data: RosterSolveInput) -> RosterSolveResult:
     model = cp_model.CpModel()
     dates = [data.start_date + timedelta(days=i) for i in range(data.num_days)]
     buildings_by_id = {b.id: b for b in data.buildings}
-    _validate_building_hours(data.buildings, data.shift_length_minutes)
+    _validate_building_hours(data.buildings, data.rooms, data.shift_length_minutes)
     slots = _all_slots(data.rooms, buildings_by_id, data.shift_length_minutes)
     conflicting_pairs = _conflicting_slot_pairs(slots, data.travel_time_minutes)
 
