@@ -45,7 +45,16 @@
       "Bash(curl *)",
       "Bash(./.venv/Scripts/python.exe -m ruff check app tests)",
       "Bash(./.venv/Scripts/python.exe -m ruff format --check app tests)",
-      "Bash(./.venv/Scripts/python.exe -m mypy app)"
+      "Bash(./.venv/Scripts/python.exe -m mypy app)",
+      "Bash(gh api *)",
+      "Bash(python3 -c ' *)",
+      "Bash(xargs grep -ln \"roster_service\\\\|exception_handler\")",
+      "Bash(uv run *)",
+      "Bash(git ls-tree *)",
+      "Read(//c/tmp/**)",
+      "Bash(sqlite3 migration_test.db \".schema shifts\")",
+      "Bash(sqlite3 migration_test.db \".schema rules\")",
+      "Bash(git push *)"
     ]
   }
 }
