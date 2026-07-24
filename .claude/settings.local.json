@@ -54,7 +54,19 @@
       "Read(//c/tmp/**)",
       "Bash(sqlite3 migration_test.db \".schema shifts\")",
       "Bash(sqlite3 migration_test.db \".schema rules\")",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(gh api graphql -f 'query= *)",
+      "Bash(mkdir -p \"/c/Users/mikel/AppData/Local/Temp/claude/C--Projects-Medical-staff-review/ed8c9d4a-7e32-4fae-be88-402293fb1ef0/scratchpad\")",
+      "Read(//c/Users/mikel/AppData/Local/Temp/claude/C--Projects-Medical-staff-review/ed8c9d4a-7e32-4fae-be88-402293fb1ef0/scratchpad/**)",
+      "Bash(python3 -m json.tool)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //PID 32060 //F)",
+      "Bash(tasklist //FI \"IMAGENAME eq python.exe\")",
+      "Bash(python3 -c \"import json,sys; print\\(len\\(json.load\\(sys.stdin\\)\\)\\)\")",
+      "Bash(rm -f /tmp/fk_test.db)",
+      "Bash(npx vitest *)",
+      "Bash(git stash *)",
+      "Bash(git pull *)"
     ]
   }
 }

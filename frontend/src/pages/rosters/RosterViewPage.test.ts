@@ -150,7 +150,11 @@ describe('RosterViewPage', () => {
         return Promise.resolve(
           mockResponse([
             mockRosterSummary(),
-            { ...mockRosterSummary(), id: 2, generated_at: '2026-07-25T11:00:00' },
+            {
+              ...mockRosterSummary(),
+              id: 2,
+              generated_at: '2026-07-25T11:00:00',
+            },
           ]),
         );
       }
