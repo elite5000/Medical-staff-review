@@ -24,3 +24,16 @@ def test_delete_role_in_use_by_staff_conflicts(client: TestClient) -> None:
 def test_delete_unused_role(client: TestClient) -> None:
     role = _create_role(client)
     assert client.delete(f"/roles/{role['id']}").status_code == 204
+
+
+def test_create_role_rejects_duplicate_name(client: TestClient) -> None:
+    _create_role(client, name="Senior Fellow")
+    response = client.post("/roles", json={"name": "Senior Fellow"})
+    assert response.status_code == 409
+
+
+def test_update_role_rejects_duplicate_name(client: TestClient) -> None:
+    _create_role(client, name="Senior Fellow")
+    other = _create_role(client, name="Junior Fellow")
+    response = client.patch(f"/roles/{other['id']}", json={"name": "Senior Fellow"})
+    assert response.status_code == 409

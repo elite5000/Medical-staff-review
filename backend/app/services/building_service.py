@@ -6,6 +6,7 @@ from app.models.building import Building
 from app.models.room import Room
 from app.models.rule import Rule
 from app.schemas.building import BuildingCreate, BuildingUpdate
+from app.services.db_errors import conflict_on_duplicate_name
 
 
 def list_buildings(db: Session) -> list[Building]:
@@ -22,7 +23,8 @@ def get_building(db: Session, building_id: int) -> Building:
 def create_building(db: Session, data: BuildingCreate) -> Building:
     building = Building(**data.model_dump())
     db.add(building)
-    db.commit()
+    with conflict_on_duplicate_name(db, "Building"):
+        db.commit()
     db.refresh(building)
     return building
 
@@ -36,7 +38,8 @@ def update_building(db: Session, building_id: int, data: BuildingUpdate) -> Buil
         raise HTTPException(status_code=422, detail="closing_minutes must be after opening_minutes")
     for field, value in updates.items():
         setattr(building, field, value)
-    db.commit()
+    with conflict_on_duplicate_name(db, "Building"):
+        db.commit()
     db.refresh(building)
     return building
 

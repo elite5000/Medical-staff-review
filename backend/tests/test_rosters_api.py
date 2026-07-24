@@ -70,6 +70,37 @@ def test_regenerate_missing_roster_404(client: TestClient) -> None:
     assert client.post("/rosters/999/regenerate").status_code == 404
 
 
+def test_regenerate_rejects_stale_roster(client: TestClient) -> None:
+    """Only the most recent generation for a date range may be regenerated — see
+    RosterListPage.svelte's latestIdByRange, which the backend must also enforce so a
+    stale tab or a direct API call can't supersede a newer generation's pins/edits."""
+    _setup_simple_scenario(client)
+    first = client.post("/rosters", json={"start_date": "2026-08-03", "num_days": 1}).json()
+    second = client.post(f"/rosters/{first['id']}/regenerate")
+    assert second.status_code == 201
+
+    response = client.post(f"/rosters/{first['id']}/regenerate")
+    assert response.status_code == 409
+
+
+def test_manual_edit_rejects_historical_roster(client: TestClient) -> None:
+    """Older generations for a date range are read-only history once a newer generation
+    exists — matching RosterListPage.svelte's read-only treatment of non-latest rows."""
+    ctx = _setup_simple_scenario(client)
+    first = client.post("/rosters", json={"start_date": "2026-08-03", "num_days": 1}).json()
+    first_detail = client.get(f"/rosters/{first['id']}").json()
+    shift = first_detail["shifts"][0]
+
+    regenerate_response = client.post(f"/rosters/{first['id']}/regenerate")
+    assert regenerate_response.status_code == 201
+
+    response = client.patch(
+        f"/rosters/{first['id']}/shifts/{shift['id']}",
+        json={"staff_id": cast(dict[str, object], ctx["staff"])["id"]},
+    )
+    assert response.status_code == 409
+
+
 def test_manual_edit_rejects_ineligible_staff(client: TestClient) -> None:
     tag = client.post("/tags", json={"name": "Emergency Department"}).json()
     role = client.post("/roles", json={"name": "Senior Fellow"}).json()

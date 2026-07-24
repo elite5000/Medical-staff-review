@@ -42,11 +42,29 @@ def create_room(db: Session, data: RoomCreate) -> Room:
     return room
 
 
+def _has_roster_history(db: Session, room_id: int) -> bool:
+    has_shifts = db.scalar(select(Shift.id).where(Shift.room_id == room_id).limit(1))
+    has_violations = db.scalar(
+        select(RosterViolation.id).where(RosterViolation.room_id == room_id).limit(1)
+    )
+    return bool(has_shifts or has_violations)
+
+
 def update_room(db: Session, room_id: int, data: RoomUpdate) -> Room:
     room = get_room(db, room_id)
     updates = data.model_dump(exclude_unset=True, exclude={"tag_ids"})
     if data.building_id is not None:
         get_building(db, data.building_id)
+        # Retained Shift/RosterViolation rows only store room_id and shift_index; wall-clock
+        # timing for them is derived from the Room's *current* Building (see
+        # roster_service.set_shift_staff), so moving a Room with roster history to a
+        # different Building would reinterpret that history under the wrong hours.
+        if data.building_id != room.building_id and _has_roster_history(db, room_id):
+            raise HTTPException(
+                status_code=409,
+                detail="Cannot move a Room to a different Building once it appears in a "
+                "generated Roster",
+            )
     for field, value in updates.items():
         setattr(room, field, value)
     if data.tag_ids is not None:
@@ -61,11 +79,7 @@ def delete_room(db: Session, room_id: int) -> None:
     # A Room that already appears in a generated Roster's Shifts, or that a generated
     # Roster's violation history points at (e.g. a room that went unfilled), must not
     # vanish from history.
-    has_shifts = db.scalar(select(Shift.id).where(Shift.room_id == room_id).limit(1))
-    has_violations = db.scalar(
-        select(RosterViolation.id).where(RosterViolation.room_id == room_id).limit(1)
-    )
-    if has_shifts or has_violations:
+    if _has_roster_history(db, room_id):
         raise HTTPException(
             status_code=409,
             detail="Cannot delete a Room that appears in a generated Roster",

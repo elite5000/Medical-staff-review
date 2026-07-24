@@ -63,6 +63,36 @@ def test_delete_room(client: TestClient) -> None:
     assert client.delete(f"/rooms/{room['id']}").status_code == 204
 
 
+def test_update_room_move_blocked_after_roster_history(client: TestClient) -> None:
+    """A Room's retained Shift rows only store room_id/shift_index; wall-clock timing for
+    them is derived from the Room's *current* Building, so moving it to a different
+    Building after it appears in roster history would reinterpret that history under the
+    wrong hours."""
+    building_a = client.post(
+        "/buildings", json={"name": "Building A", "opening_minutes": 480, "closing_minutes": 720}
+    ).json()
+    building_b = client.post(
+        "/buildings", json={"name": "Building B", "opening_minutes": 480, "closing_minutes": 720}
+    ).json()
+    room = client.post(
+        "/rooms", json={"name": "Room 1", "building_id": building_a["id"], "tag_ids": []}
+    ).json()
+    client.post("/staff", json={"name": "Dr. Alice"})
+
+    roster = client.post("/rosters", json={"start_date": "2026-08-03", "num_days": 1}).json()
+    detail = client.get(f"/rosters/{roster['id']}").json()
+    assert any(s["room_id"] == room["id"] for s in detail["shifts"])
+
+    response = client.patch(f"/rooms/{room['id']}", json={"building_id": building_b["id"]})
+    assert response.status_code == 409
+
+    # Other fields, and a no-op "move" to the same Building, remain editable.
+    unchanged = client.patch(f"/rooms/{room['id']}", json={"name": "Room 1 (renamed)"})
+    assert unchanged.status_code == 200
+    noop = client.patch(f"/rooms/{room['id']}", json={"building_id": building_a["id"]})
+    assert noop.status_code == 200
+
+
 def test_delete_room_blocked_by_violation_history_without_shifts(client: TestClient) -> None:
     """A Room can appear in a generated Roster's history purely as a ROOM_UNFILLED
     violation, with no Shift row ever created for it (e.g. no Staff exists at all) — the

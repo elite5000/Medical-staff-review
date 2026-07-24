@@ -15,15 +15,18 @@
   let { params = {} }: { params?: { id?: string } } = $props();
   const rosterId = $derived(params.id ? Number(params.id) : null);
 
+  type RosterSummary = components['schemas']['RosterRead'];
+
   let roster: RosterDetail | null = $state(null);
   let roomsById: Map<number, Room> = $state(new Map());
   let buildingsById: Map<number, Building> = $state(new Map());
   let tagsById: Map<number, Tag> = $state(new Map());
   let staffOptions: Staff[] = $state([]);
+  let rosters: RosterSummary[] = $state([]);
   let error: string | null = $state(null);
 
   async function load(id: number) {
-    const [rosterRes, roomsRes, staffRes, buildingsRes, tagsRes] =
+    const [rosterRes, roomsRes, staffRes, buildingsRes, tagsRes, rostersRes] =
       await Promise.all([
         api.GET('/rosters/{roster_id}', {
           params: { path: { roster_id: id } },
@@ -32,6 +35,7 @@
         api.GET('/staff'),
         api.GET('/buildings'),
         api.GET('/tags'),
+        api.GET('/rosters'),
       ]);
     if (rosterRes.error || !rosterRes.data) {
       error = 'Failed to load roster';
@@ -42,10 +46,25 @@
     staffOptions = staffRes.data ?? [];
     buildingsById = new Map((buildingsRes.data ?? []).map((b) => [b.id, b]));
     tagsById = new Map((tagsRes.data ?? []).map((t) => [t.id, t]));
+    rosters = rostersRes.data ?? [];
   }
 
   $effect(() => {
     if (rosterId !== null) load(rosterId);
+  });
+
+  // Only the latest generation for a date range is editable — see RosterListPage.svelte's
+  // matching "latestIdByRange" and the backend's own _is_latest_for_range check, which
+  // rejects edits to older generations regardless of what this shows.
+  const isLatestForRange = $derived.by(() => {
+    if (!roster) return false;
+    const current = roster;
+    return !rosters.some(
+      (r) =>
+        r.start_date === current.start_date &&
+        r.end_date === current.end_date &&
+        r.generated_at > current.generated_at,
+    );
   });
 
   const shiftsByDate = $derived.by(() => {
@@ -138,15 +157,20 @@
             <td>{roomsById.get(shift.room_id)?.name ?? '—'}</td>
             <td>{shift.shift_index}</td>
             <td>
-              <select
-                value={shift.staff_id}
-                onchange={(e) =>
-                  reassign(shift.id, Number(e.currentTarget.value))}
-              >
-                {#each staffOptions as person (person.id)}
-                  <option value={person.id}>{person.name}</option>
-                {/each}
-              </select>
+              {#if isLatestForRange}
+                <select
+                  value={shift.staff_id}
+                  onchange={(e) =>
+                    reassign(shift.id, Number(e.currentTarget.value))}
+                >
+                  {#each staffOptions as person (person.id)}
+                    <option value={person.id}>{person.name}</option>
+                  {/each}
+                </select>
+              {:else}
+                {staffOptions.find((p) => p.id === shift.staff_id)?.name ??
+                  shift.staff_id}
+              {/if}
             </td>
             <td>{shift.pinned ? 'Yes' : 'No'}</td>
           </tr>

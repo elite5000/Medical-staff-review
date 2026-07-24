@@ -69,6 +69,37 @@ def test_update_building_rejects_closing_before_opening(client: TestClient) -> N
     assert response.status_code == 422
 
 
+def test_create_building_rejects_hours_past_midnight(client: TestClient) -> None:
+    # A window spanning past midnight would be treated as belonging entirely to one
+    # calendar date by the solver and the manual-edit conflict check (both compare shifts
+    # only within the same `date`), silently missing the overnight overlap.
+    response = client.post(
+        "/buildings", json={"name": "Overnight", "opening_minutes": 1380, "closing_minutes": 1620}
+    )
+    assert response.status_code == 422
+
+
+def test_create_building_rejects_negative_opening_minutes(client: TestClient) -> None:
+    response = client.post(
+        "/buildings", json={"name": "Bad Hours", "opening_minutes": -60, "closing_minutes": 480}
+    )
+    assert response.status_code == 422
+
+
+def test_update_building_rejects_hours_past_midnight(client: TestClient) -> None:
+    created = _create_building(client)
+    response = client.patch(f"/buildings/{created['id']}", json={"closing_minutes": 1620})
+    assert response.status_code == 422
+
+
+def test_create_building_rejects_duplicate_name(client: TestClient) -> None:
+    _create_building(client, name="Hospital")
+    response = client.post(
+        "/buildings", json={"name": "Hospital", "opening_minutes": 480, "closing_minutes": 720}
+    )
+    assert response.status_code == 409
+
+
 def test_delete_building_with_room_conflicts(client: TestClient) -> None:
     building = _create_building(client)
     room_response = client.post(

@@ -6,6 +6,7 @@ from app.models.associations import staff_roles
 from app.models.role import Role
 from app.models.rule import Rule
 from app.schemas.role import RoleCreate, RoleUpdate
+from app.services.db_errors import conflict_on_duplicate_name
 
 
 def list_roles(db: Session) -> list[Role]:
@@ -22,7 +23,8 @@ def get_role(db: Session, role_id: int) -> Role:
 def create_role(db: Session, data: RoleCreate) -> Role:
     role = Role(**data.model_dump())
     db.add(role)
-    db.commit()
+    with conflict_on_duplicate_name(db, "Role"):
+        db.commit()
     db.refresh(role)
     return role
 
@@ -31,7 +33,8 @@ def update_role(db: Session, role_id: int, data: RoleUpdate) -> Role:
     role = get_role(db, role_id)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(role, field, value)
-    db.commit()
+    with conflict_on_duplicate_name(db, "Role"):
+        db.commit()
     db.refresh(role)
     return role
 

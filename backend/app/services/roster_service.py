@@ -188,12 +188,35 @@ def generate_roster(db: Session, start_date: date, num_days: int = DEFAULT_NUM_D
     return _persist_result(db, result, start_date, num_days, generated_from_roster_id=None)
 
 
+def _is_latest_for_range(db: Session, roster: Roster) -> bool:
+    """Mirrors RosterListPage.svelte's latestIdByRange: only the most recent generation for
+    a date range is live — older generations for the same range are read-only history, and
+    regenerating or editing them would silently supersede/erase whatever the latest
+    generation had already accumulated (e.g. from a stale browser tab)."""
+    newer_exists = db.scalar(
+        select(Roster.id)
+        .where(
+            Roster.start_date == roster.start_date,
+            Roster.end_date == roster.end_date,
+            Roster.generated_at > roster.generated_at,
+        )
+        .limit(1)
+    )
+    return newer_exists is None
+
+
 def regenerate_roster(db: Session, roster_id: int) -> Roster:
     """Re-solves the same date range, carrying the prior generation's pinned Shifts forward
     as fixed assignments — see CONTEXT.md's Roster entry."""
     previous = db.get(Roster, roster_id)
     if previous is None:
         raise HTTPException(status_code=404, detail="Roster not found")
+
+    if not _is_latest_for_range(db, previous):
+        raise HTTPException(
+            status_code=409,
+            detail="A newer roster already exists for this date range; regenerate that one instead",
+        )
 
     num_days = (previous.end_date - previous.start_date).days + 1
     pinned_shifts = [
@@ -252,6 +275,13 @@ def set_shift_staff(db: Session, roster_id: int, shift_id: int, staff_id: int) -
     shift = db.get(Shift, shift_id)
     if shift is None or shift.roster_id != roster_id:
         raise HTTPException(status_code=404, detail="Shift not found")
+
+    if not _is_latest_for_range(db, shift.roster):
+        raise HTTPException(
+            status_code=409,
+            detail="Cannot edit a historical roster; only the latest generation for its "
+            "date range is editable",
+        )
 
     staff = db.get(Staff, staff_id)
     if staff is None:

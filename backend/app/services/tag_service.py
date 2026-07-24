@@ -6,6 +6,7 @@ from app.models.associations import room_tags
 from app.models.rule import Rule
 from app.models.tag import Tag
 from app.schemas.tag import TagCreate, TagUpdate
+from app.services.db_errors import conflict_on_duplicate_name
 
 
 def list_tags(db: Session) -> list[Tag]:
@@ -22,7 +23,8 @@ def get_tag(db: Session, tag_id: int) -> Tag:
 def create_tag(db: Session, data: TagCreate) -> Tag:
     tag = Tag(**data.model_dump())
     db.add(tag)
-    db.commit()
+    with conflict_on_duplicate_name(db, "Tag"):
+        db.commit()
     db.refresh(tag)
     return tag
 
@@ -31,7 +33,8 @@ def update_tag(db: Session, tag_id: int, data: TagUpdate) -> Tag:
     tag = get_tag(db, tag_id)
     for field, value in data.model_dump(exclude_unset=True).items():
         setattr(tag, field, value)
-    db.commit()
+    with conflict_on_duplicate_name(db, "Tag"):
+        db.commit()
     db.refresh(tag)
     return tag
 

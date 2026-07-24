@@ -47,11 +47,26 @@ function mockRosterDetail() {
   };
 }
 
+function mockRosterSummary() {
+  const detail = mockRosterDetail();
+  return {
+    id: detail.id,
+    start_date: detail.start_date,
+    end_date: detail.end_date,
+    generated_at: detail.generated_at,
+    generated_from_roster_id: detail.generated_from_roster_id,
+    has_violations: detail.has_violations,
+  };
+}
+
 beforeEach(() => {
   vi.resetAllMocks();
   mockedApi.GET.mockImplementation((path: string) => {
     if (path === '/rosters/{roster_id}') {
       return Promise.resolve(mockResponse(mockRosterDetail()));
+    }
+    if (path === '/rosters') {
+      return Promise.resolve(mockResponse([mockRosterSummary()]));
     }
     if (path === '/rooms') {
       return Promise.resolve(
@@ -124,5 +139,47 @@ describe('RosterViewPage', () => {
         },
       ),
     );
+  });
+
+  it('shows staff as read-only text when a newer roster exists for the same range', async () => {
+    mockedApi.GET.mockImplementation((path: string) => {
+      if (path === '/rosters/{roster_id}') {
+        return Promise.resolve(mockResponse(mockRosterDetail()));
+      }
+      if (path === '/rosters') {
+        return Promise.resolve(
+          mockResponse([
+            mockRosterSummary(),
+            { ...mockRosterSummary(), id: 2, generated_at: '2026-07-25T11:00:00' },
+          ]),
+        );
+      }
+      if (path === '/staff') {
+        return Promise.resolve(
+          mockResponse([
+            {
+              id: 1,
+              name: 'Dr. Alice',
+              active: true,
+              roles: [],
+              preferred_days: [],
+              unavailabilities: [],
+            },
+          ]),
+        );
+      }
+      if (path === '/rooms') {
+        return Promise.resolve(
+          mockResponse([{ id: 1, name: 'Room A', building_id: 10, tags: [] }]),
+        );
+      }
+      return Promise.resolve(mockResponse([]));
+    });
+
+    render(RosterViewPage, { props: { params: { id: '1' } } });
+
+    await waitFor(() => expect(screen.getByText('Room A')).toBeTruthy());
+    expect(screen.getByText('Dr. Alice')).toBeTruthy();
+    expect(screen.queryByRole('combobox')).toBeNull();
   });
 });

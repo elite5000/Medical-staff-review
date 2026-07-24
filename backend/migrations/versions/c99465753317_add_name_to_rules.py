@@ -34,7 +34,11 @@ def upgrade() -> None:
     # away first (the more obvious approach) would leave roster_violations referencing the
     # temporary name, then dangling once that table is dropped. Building the replacement
     # under a temporary name and renaming *it* into place at the end avoids ever renaming
-    # the table other rows still reference.
+    # the table other rows still reference. With FK enforcement on, DROP TABLE rules would
+    # still fail outright while roster_violations.rule_id rows reference it, so enforcement
+    # is turned off for the rebuild and back on immediately after — SQLite applies this
+    # pragma per-connection outside any transaction, so it takes effect for these statements.
+    op.execute("PRAGMA foreign_keys=OFF")
     op.create_table(
         "rules_new",
         sa.Column("id", sa.Integer(), nullable=False),
@@ -68,6 +72,7 @@ def upgrade() -> None:
     )
     op.execute("DROP TABLE rules")
     op.execute("ALTER TABLE rules_new RENAME TO rules")
+    op.execute("PRAGMA foreign_keys=ON")
 
 
 def downgrade() -> None:

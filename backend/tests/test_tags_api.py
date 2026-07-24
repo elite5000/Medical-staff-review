@@ -38,3 +38,16 @@ def test_delete_tag_in_use_by_room_conflicts(client: TestClient) -> None:
         json={"name": "Room 1", "building_id": building["id"], "tag_ids": [tag["id"]]},
     )
     assert client.delete(f"/tags/{tag['id']}").status_code == 409
+
+
+def test_create_tag_rejects_duplicate_name(client: TestClient) -> None:
+    _create_tag(client, name="Surgery")
+    response = client.post("/tags", json={"name": "Surgery"})
+    assert response.status_code == 409
+
+
+def test_update_tag_rejects_duplicate_name(client: TestClient) -> None:
+    _create_tag(client, name="Surgery")
+    other = _create_tag(client, name="General Practice")
+    response = client.patch(f"/tags/{other['id']}", json={"name": "Surgery"})
+    assert response.status_code == 409
