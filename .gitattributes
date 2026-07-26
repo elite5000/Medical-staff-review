@@ -1,0 +1,4 @@
+# Force LF line endings for all text files, regardless of a contributor's local
+# core.autocrlf setting — Prettier (and the Stop-hook's `prettier --check .` gate) always
+# normalizes to LF, so CRLF checkouts make every file look "unformatted".
+* text=auto eol=lf

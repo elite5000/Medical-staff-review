@@ -1,5 +1,34 @@
 {
   "enabledPlugins": {
     "mattpocock-skills@mattpocock": true
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/format-fix.sh",
+            "shell": "bash",
+            "timeout": 30,
+            "statusMessage": "Formatting & auto-fixing..."
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/stop-checks.sh",
+            "shell": "bash",
+            "timeout": 180,
+            "statusMessage": "Running lint, typecheck, and tests..."
+          }
+        ]
+      }
+    ]
   }
 }
