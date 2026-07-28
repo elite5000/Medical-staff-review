@@ -12,13 +12,15 @@ Verification section).
 from __future__ import annotations
 
 import json
+import ipaddress
 import socket
 import sys
 import threading
+import time
 import tkinter as tk
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from tkinter import ttk
+from tkinter import messagebox, ttk
 
 import qrcode
 import uvicorn
@@ -35,6 +37,7 @@ from app.config import settings
 from app.paths import get_data_dir, is_frozen
 
 PORT = 8765
+_CERT_LOCK = threading.Lock()
 
 
 def _backend_root() -> Path:
@@ -49,27 +52,46 @@ def _backend_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
-def _lan_ip() -> str:
-    """Best-effort LAN IPv4 via a UDP "connect" (no packets actually sent) — more reliable
-    than hostname resolution on machines with multiple NICs/VPN adapters.
+def _candidate_lan_ips() -> list[str]:
+    """Returns non-loopback IPv4 candidates for client devices to reach this host.
 
-    Known limitation: this picks whichever interface owns the default route, so a full-tunnel
-    VPN active on the host PC would make it advertise an address phones/Macs on the actual
-    LAN can't reach (and an isolated LAN with no default route falls back to 127.0.0.1,
-    equally unreachable from another device). Not something to engineer around for this
-    project's actual deployment target (a single admin's home/office LAN, no VPN expected on
-    the machine running the backend) — the manual host:port entry in the connect screen is
-    the fallback if this ever guesses wrong.
+    Prioritizes private RFC1918 addresses (typical LAN adapters), while still keeping a
+    non-private fallback when that's all the host has.
     """
+
+    def _append_unique(items: list[str], value: str) -> None:
+        if value not in items:
+            items.append(value)
+
+    candidates: list[str] = []
+
+    # Route-based hint (can be wrong with full-tunnel VPN, but useful as one signal).
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         sock.connect(("8.8.8.8", 80))
-        ip = str(sock.getsockname()[0])
+        route_ip = str(sock.getsockname()[0])
+        if route_ip != "127.0.0.1":
+            _append_unique(candidates, route_ip)
     except OSError:
-        ip = "127.0.0.1"
+        pass
     finally:
         sock.close()
-    return ip
+
+    for host in (socket.gethostname(), socket.getfqdn()):
+        try:
+            for entry in socket.getaddrinfo(host, None, family=socket.AF_INET):
+                ip = str(entry[4][0])
+                if ip != "127.0.0.1":
+                    _append_unique(candidates, ip)
+        except OSError:
+            continue
+
+    private = [ip for ip in candidates if ipaddress.ip_address(ip).is_private]
+    if private:
+        return private
+    if candidates:
+        return candidates
+    return ["127.0.0.1"]
 
 
 def _run_migrations() -> None:
@@ -90,31 +112,37 @@ def _ensure_certificate() -> tuple[Path, Path]:
     data_dir = get_data_dir()
     cert_path = data_dir / "cert.pem"
     key_path = data_dir / "key.pem"
-    if cert_path.exists() and key_path.exists():
-        return cert_path, key_path
+    with _CERT_LOCK:
+        if cert_path.exists() and key_path.exists():
+            return cert_path, key_path
 
-    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Medical Staff Review")])
-    now = datetime.now(UTC)
-    cert = (
-        x509.CertificateBuilder()
-        .subject_name(name)
-        .issuer_name(name)
-        .public_key(key.public_key())
-        .serial_number(x509.random_serial_number())
-        .not_valid_before(now)
-        .not_valid_after(now + timedelta(days=3650))
-        .sign(key, hashes.SHA256())
-    )
-    key_path.write_bytes(
-        key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.TraditionalOpenSSL,
-            encryption_algorithm=serialization.NoEncryption(),
+        key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+        name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Medical Staff Review")])
+        now = datetime.now(UTC)
+        cert = (
+            x509.CertificateBuilder()
+            .subject_name(name)
+            .issuer_name(name)
+            .public_key(key.public_key())
+            .serial_number(x509.random_serial_number())
+            .not_valid_before(now)
+            .not_valid_after(now + timedelta(days=3650))
+            .sign(key, hashes.SHA256())
         )
-    )
-    cert_path.write_bytes(cert.public_bytes(serialization.Encoding.PEM))
-    return cert_path, key_path
+
+        tmp_key_path = key_path.with_name(f"{key_path.name}.tmp")
+        tmp_cert_path = cert_path.with_name(f"{cert_path.name}.tmp")
+        tmp_key_path.write_bytes(
+            key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.TraditionalOpenSSL,
+                encryption_algorithm=serialization.NoEncryption(),
+            )
+        )
+        tmp_cert_path.write_bytes(cert.public_bytes(serialization.Encoding.PEM))
+        tmp_key_path.replace(key_path)
+        tmp_cert_path.replace(cert_path)
+        return cert_path, key_path
 
 
 def _cert_fingerprint(cert_path: Path) -> str:
@@ -148,11 +176,11 @@ def _tray_icon_image() -> Image.Image:
     return image
 
 
-def _connection_payload() -> str:
+def _connection_payload(host: str) -> str:
     cert_path, _ = _ensure_certificate()
     return json.dumps(
         {
-            "host": _lan_ip(),
+            "host": host,
             "port": PORT,
             "token": settings.pairing_token,
             "cert_fingerprint": _cert_fingerprint(cert_path),
@@ -164,18 +192,43 @@ def _show_connection_window() -> None:
     """Opens a small window with a QR code encoding {host, port, token} for the Flutter
     app's "scan to connect" flow. Runs its own Tk mainloop in a dedicated thread each time
     it's invoked from the tray menu, so it never blocks the tray icon or the API server."""
-    qr_image = qrcode.make(_connection_payload()).get_image().resize((320, 320))
+    candidate_ips = _candidate_lan_ips()
 
     window = tk.Tk()
     window.title("Medical Staff Review — Connect a device")
     window.resizable(False, False)
 
-    photo = ImageTk.PhotoImage(qr_image)
-    image_label = ttk.Label(window, image=photo)
-    image_label.image = photo  # type: ignore[attr-defined]  # keep a reference alive
+    selected_host = tk.StringVar(value=candidate_ips[0])
+    address_var = tk.StringVar(value=f"{selected_host.get()}:{PORT}")
+
+    image_label = ttk.Label(window)
     image_label.pack(padx=16, pady=(16, 8))
 
-    ttk.Label(window, text=f"{_lan_ip()}:{PORT}", font=("Segoe UI", 12)).pack()
+    def update_qr(host: str) -> None:
+        qr_image = qrcode.make(_connection_payload(host)).get_image().resize((320, 320))
+        photo = ImageTk.PhotoImage(qr_image)
+        image_label.configure(image=photo)
+        image_label.image = photo  # type: ignore[attr-defined]  # keep a reference alive
+        address_var.set(f"{host}:{PORT}")
+
+    update_qr(selected_host.get())
+
+    if len(candidate_ips) > 1:
+        ttk.Label(window, text="Host / IP for other devices").pack(pady=(0, 4))
+        host_picker = ttk.Combobox(
+            window,
+            values=candidate_ips,
+            textvariable=selected_host,
+            state="readonly",
+            width=28,
+        )
+        host_picker.pack(padx=16, pady=(0, 8))
+        host_picker.bind(
+            "<<ComboboxSelected>>",
+            lambda _event: update_qr(selected_host.get()),
+        )
+
+    ttk.Label(window, textvariable=address_var, font=("Segoe UI", 12)).pack()
 
     # QR scanning is Android-only (see connect_screen.dart's _isMobile) — Windows and macOS
     # clients must type host/port/token by hand, so the token needs to be shown here too,
@@ -202,9 +255,54 @@ def _open_data_folder() -> None:
     os.startfile(get_data_dir())  # noqa: S606  (Windows-only build; this is explorer.exe)
 
 
+def _wait_for_server_ready(server_thread: threading.Thread, timeout_seconds: float = 8.0) -> bool:
+    """Waits for the local API socket to become reachable or for startup failure."""
+
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        if not server_thread.is_alive():
+            return False
+        probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            probe.settimeout(0.25)
+            if probe.connect_ex(("127.0.0.1", PORT)) == 0:
+                return True
+        finally:
+            probe.close()
+        time.sleep(0.1)
+    return server_thread.is_alive()
+
+
+def _show_startup_error(message: str) -> None:
+    root = tk.Tk()
+    root.withdraw()
+    messagebox.showerror(
+        "Medical Staff Review startup error",
+        f"The local backend could not start.\n\n{message}\n\n"
+        f"Fix the issue and relaunch the app. Common causes include port {PORT} already in use "
+        "or invalid TLS certificate files in the data folder.",
+    )
+    root.destroy()
+
+
 def main() -> None:
     _run_migrations()
-    threading.Thread(target=_serve, daemon=True).start()
+    _ensure_certificate()
+
+    startup_errors: list[str] = []
+
+    def serve_with_error_capture() -> None:
+        try:
+            _serve()
+        except Exception as exc:  # pragma: no cover - startup path is integration-only
+            startup_errors.append(str(exc))
+
+    server_thread = threading.Thread(target=serve_with_error_capture, daemon=True)
+    server_thread.start()
+    if not _wait_for_server_ready(server_thread):
+        detail = startup_errors[0] if startup_errors else "The server did not become reachable."
+        _show_startup_error(detail)
+        return
 
     def show_connection_window(icon: Icon, item: MenuItem) -> None:
         threading.Thread(target=_show_connection_window, daemon=True).start()

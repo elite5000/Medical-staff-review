@@ -7,6 +7,14 @@ import '../api/api_client.dart';
 import 'connection_info.dart';
 import 'connection_store.dart';
 
+HttpClient _pinnedHttpClient(String expectedFingerprint) {
+  return HttpClient()
+    ..badCertificateCallback = (cert, host, port) {
+      final actual = sha256.convert(cert.der).toString();
+      return actual == expectedFingerprint;
+    };
+}
+
 /// Attempts a connection and, on success, persists it via [ConnectionStore] and returns an
 /// [ApiClient] already wired to the right underlying HTTP client — the caller should keep
 /// using this same instance for the rest of the session rather than constructing a fresh
@@ -27,7 +35,7 @@ Future<ApiClient?> connectAndVerify(ConnectionInfo info) async {
   }
 
   String? capturedFingerprint;
-  final ioHttpClient = HttpClient()
+  final probeIoHttpClient = HttpClient()
     ..badCertificateCallback = (cert, host, port) {
       final actual = sha256.convert(cert.der).toString();
       if (info.certFingerprint == null) {
@@ -37,17 +45,26 @@ Future<ApiClient?> connectAndVerify(ConnectionInfo info) async {
       return actual == info.certFingerprint;
     };
 
-  final probeApi = ApiClient(info, httpClient: IOClient(ioHttpClient));
-  if (!await probeApi.verifyConnection()) return null;
+  final probeClient = IOClient(probeIoHttpClient);
+  try {
+    final probeApi = ApiClient(info, httpClient: probeClient);
+    if (!await probeApi.verifyConnection()) return null;
+  } finally {
+    probeClient.close();
+  }
 
-  final resolved = capturedFingerprint == null
-      ? info
-      : ConnectionInfo(
-          host: info.host,
-          port: info.port,
-          token: info.token,
-          certFingerprint: capturedFingerprint,
-        );
+  final resolvedFingerprint = info.certFingerprint ?? capturedFingerprint;
+  if (resolvedFingerprint == null) return null;
+
+  final resolved = ConnectionInfo(
+    host: info.host,
+    port: info.port,
+    token: info.token,
+    certFingerprint: resolvedFingerprint,
+  );
   await ConnectionStore.save(resolved);
-  return ApiClient(resolved, httpClient: IOClient(ioHttpClient));
+  return ApiClient(
+    resolved,
+    httpClient: IOClient(_pinnedHttpClient(resolvedFingerprint)),
+  );
 }
