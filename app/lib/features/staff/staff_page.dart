@@ -18,12 +18,15 @@ class StaffPage extends StatelessWidget {
     VoidCallback reload, {
     Staff? existing,
   }) async {
-    final saved = await Navigator.of(context).push<bool>(
+    // Always reload on return, regardless of how the form closed (back button, hardware
+    // back, swipe) — StaffFormPage intentionally stays open after a save (to allow adding
+    // unavailability), so there's no reliable "did anything change" pop result to key off.
+    await Navigator.of(context).push<void>(
       MaterialPageRoute(
         builder: (_) => StaffFormPage(api: api, existing: existing),
       ),
     );
-    if (saved == true) reload();
+    reload();
   }
 
   Future<void> _delete(

@@ -33,6 +33,16 @@ class _RosterGeneratePageState extends State<RosterGeneratePage> {
       setState(() => _error = 'A start date is required');
       return;
     }
+    // A cleared/malformed field silently falling back to 14 would generate (and permanently
+    // store — every roster generation is kept, see CONTEXT.md) a materially different
+    // roster than whatever length the admin actually typed, with no indication it happened.
+    final numDays = int.tryParse(_numDaysController.text.trim());
+    if (numDays == null || numDays < 1 || numDays > 14) {
+      setState(
+        () => _error = 'Number of days must be a whole number from 1 to 14',
+      );
+      return;
+    }
     setState(() {
       _generating = true;
       _error = null;
@@ -40,7 +50,7 @@ class _RosterGeneratePageState extends State<RosterGeneratePage> {
     try {
       final roster = await widget.api.generateRoster(
         startDate: _startDate!,
-        numDays: int.tryParse(_numDaysController.text.trim()) ?? 14,
+        numDays: numDays,
       );
       if (!mounted) return;
       // Replaces this page with the roster view, then reports back to RostersPage (via the

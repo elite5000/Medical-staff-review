@@ -69,10 +69,12 @@ def _run_migrations() -> None:
 def _serve() -> None:
     from app.main import app
 
-    # Binds only the detected LAN interface, not every interface (0.0.0.0) — a VPN or other
-    # virtual adapter shouldn't be able to reach this even though the pairing token would
-    # still reject it. _lan_ip() fails closed to 127.0.0.1 (loopback-only) if detection fails.
-    uvicorn.run(app, host=_lan_ip(), port=PORT, log_level="warning")
+    # 0.0.0.0, not the detected LAN IP: a socket bound to one specific address only accepts
+    # traffic addressed to that address, not 127.0.0.1 — binding to just the LAN IP breaks
+    # the Windows client's "localhost" default for the common case of running on the same PC
+    # as the backend (this was tried and reverted). The pairing token, not the bind address,
+    # is what actually keeps other devices out — see require_pairing_token in app/main.py.
+    uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="warning")  # noqa: S104
 
 
 def _tray_icon_image() -> Image.Image:

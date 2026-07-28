@@ -42,6 +42,19 @@ class _RuleFormPageState extends State<RuleFormPage> {
       setState(() => _error = 'A role is required');
       return;
     }
+    // Directly changes a solver constraint, so an unparseable/cleared field must not
+    // silently fall back to a default (1) and submit anyway — the admin would have no idea
+    // the value they typed wasn't what actually got saved.
+    int? minimumCount;
+    if (_ruleType == RuleType.minimumCount) {
+      minimumCount = int.tryParse(_minimumCountController.text.trim());
+      if (minimumCount == null || minimumCount < 1) {
+        setState(
+          () => _error = 'Minimum count must be a whole number of at least 1',
+        );
+        return;
+      }
+    }
     setState(() {
       _saving = true;
       _error = null;
@@ -59,7 +72,7 @@ class _RuleFormPageState extends State<RuleFormPage> {
           name: _nameController.text.trim(),
           ruleType: _ruleType,
           roleId: _roleId!,
-          minimumCount: int.tryParse(_minimumCountController.text.trim()) ?? 1,
+          minimumCount: minimumCount,
           buildingId: _targetType == _TargetType.building ? _buildingId : null,
           tagId: _targetType == _TargetType.tag ? _tagId : null,
         );
