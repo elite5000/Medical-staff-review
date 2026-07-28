@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 
-Future<bool> confirmDialog(BuildContext context, String message) async {
+Future<bool> confirmDialog(
+  BuildContext context,
+  String message, {
+  String confirmLabel = 'Delete',
+}) async {
   final result = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
@@ -12,7 +16,7 @@ Future<bool> confirmDialog(BuildContext context, String message) async {
         ),
         FilledButton(
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Delete'),
+          child: Text(confirmLabel),
         ),
       ],
     ),

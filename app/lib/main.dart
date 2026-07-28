@@ -64,6 +64,11 @@ class _RootPageState extends State<_RootPage> {
     setState(() => _api = ApiClient(info));
   }
 
+  Future<void> _disconnect() async {
+    await ConnectionStore.clear();
+    if (mounted) setState(() => _api = null);
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -73,6 +78,6 @@ class _RootPageState extends State<_RootPage> {
     if (api == null) {
       return ConnectScreen(onConnected: _onConnected);
     }
-    return AppShell(api: api);
+    return AppShell(api: api, onDisconnect: _disconnect);
   }
 }

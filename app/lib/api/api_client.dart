@@ -25,7 +25,15 @@ class ApiClient {
   Uri _uri(String path) => Uri.parse('${connection.baseUrl}$path');
 
   Future<dynamic> _decodeOrThrow(http.Response response) async {
-    final body = response.body.isEmpty ? null : jsonDecode(response.body);
+    dynamic body;
+    try {
+      body = response.body.isEmpty ? null : jsonDecode(response.body);
+    } on FormatException {
+      // A non-JSON error body (e.g. Starlette's plain-text "Internal Server Error" for an
+      // unhandled 500) would otherwise throw here, uncaught by UI code's `on ApiException`
+      // handlers — fall back to null so fromResponseBody below still produces one.
+      body = null;
+    }
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return body;
     }

@@ -4,13 +4,22 @@ import '../../api/api_client.dart';
 import '../../api/api_exception.dart';
 import '../../api/models.dart';
 import '../../widgets/async_loader.dart';
+import '../../widgets/confirm_dialog.dart';
 import '../../widgets/error_banner.dart';
 
-/// Ported from frontend/src/pages/settings/SettingsPage.svelte.
+/// Ported from frontend/src/pages/settings/SettingsPage.svelte, plus a Disconnect action
+/// (not present in the Svelte app, which had no pairing concept) — the only way back to the
+/// connect screen once paired, needed if the pairing token changes or the admin wants to
+/// point this device at a different backend (see main.dart's _RootPage._disconnect).
 class SettingsPage extends StatefulWidget {
   final ApiClient api;
+  final VoidCallback onDisconnect;
 
-  const SettingsPage({super.key, required this.api});
+  const SettingsPage({
+    super.key,
+    required this.api,
+    required this.onDisconnect,
+  });
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -137,6 +146,20 @@ class _SettingsPageState extends State<SettingsPage> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Text('Save'),
+            ),
+            const Divider(height: 48),
+            OutlinedButton(
+              onPressed: () async {
+                if (await confirmDialog(
+                  context,
+                  'Disconnect from this backend? You\'ll need to pair again '
+                  '(scan the QR code or enter its address) to reconnect.',
+                  confirmLabel: 'Disconnect',
+                )) {
+                  widget.onDisconnect();
+                }
+              },
+              child: const Text('Disconnect'),
             ),
           ],
         );

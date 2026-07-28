@@ -6,9 +6,13 @@ import '../../api/models.dart';
 import '../../widgets/async_loader.dart';
 import '../../widgets/confirm_dialog.dart';
 
+// Not routed through TimeOfDay: the backend allows closing_minutes up to 1440 (midnight,
+// i.e. "open until the end of the day"), but TimeOfDay's hour is constrained to 0-23 and
+// asserts outside that range — constructing one for exactly 1440 would crash this list.
 String _formatMinutes(int minutes) {
-  final time = TimeOfDay(hour: minutes ~/ 60, minute: minutes % 60);
-  return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+  final hour = minutes ~/ 60;
+  final minute = minutes % 60;
+  return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
 }
 
 /// Ported from frontend/src/pages/buildings/{BuildingsListPage,BuildingFormPage}.svelte.
@@ -24,19 +28,12 @@ class BuildingsPage extends StatelessWidget {
   }) async {
     final nameController = TextEditingController(text: existing?.name ?? '');
     // 08:00-16:00 divides evenly into the default 240-minute shift length (see
-    // BuildingFormPage.svelte's comment on the same default).
-    TimeOfDay opening = existing != null
-        ? TimeOfDay(
-            hour: existing.openingMinutes ~/ 60,
-            minute: existing.openingMinutes % 60,
-          )
-        : const TimeOfDay(hour: 8, minute: 0);
-    TimeOfDay closing = existing != null
-        ? TimeOfDay(
-            hour: existing.closingMinutes ~/ 60,
-            minute: existing.closingMinutes % 60,
-          )
-        : const TimeOfDay(hour: 16, minute: 0);
+    // BuildingFormPage.svelte's comment on the same default). Tracked as raw minutes, not
+    // TimeOfDay, since closing_minutes can be 1440 (midnight) — TimeOfDay's hour only goes
+    // to 23, so this only converts to/from TimeOfDay transiently, when the picker is
+    // actually opened, rather than holding the state in a form TimeOfDay can't represent.
+    int openingMinutes = existing?.openingMinutes ?? 8 * 60;
+    int closingMinutes = existing?.closingMinutes ?? 16 * 60;
     String? error;
 
     final saved = await showDialog<bool>(
@@ -57,25 +54,39 @@ class BuildingsPage extends StatelessWidget {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Opening time'),
-                trailing: Text(opening.format(dialogContext)),
+                trailing: Text(_formatMinutes(openingMinutes)),
                 onTap: () async {
                   final picked = await showTimePicker(
                     context: dialogContext,
-                    initialTime: opening,
+                    initialTime: TimeOfDay(
+                      hour: (openingMinutes ~/ 60) % 24,
+                      minute: openingMinutes % 60,
+                    ),
                   );
-                  if (picked != null) setState(() => opening = picked);
+                  if (picked != null) {
+                    setState(
+                      () => openingMinutes = picked.hour * 60 + picked.minute,
+                    );
+                  }
                 },
               ),
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Closing time'),
-                trailing: Text(closing.format(dialogContext)),
+                trailing: Text(_formatMinutes(closingMinutes)),
                 onTap: () async {
                   final picked = await showTimePicker(
                     context: dialogContext,
-                    initialTime: closing,
+                    initialTime: TimeOfDay(
+                      hour: (closingMinutes ~/ 60) % 24,
+                      minute: closingMinutes % 60,
+                    ),
                   );
-                  if (picked != null) setState(() => closing = picked);
+                  if (picked != null) {
+                    setState(
+                      () => closingMinutes = picked.hour * 60 + picked.minute,
+                    );
+                  }
                 },
               ),
               if (error != null)
@@ -102,8 +113,6 @@ class BuildingsPage extends StatelessWidget {
                   setState(() => error = 'Name is required');
                   return;
                 }
-                final openingMinutes = opening.hour * 60 + opening.minute;
-                final closingMinutes = closing.hour * 60 + closing.minute;
                 try {
                   if (existing == null) {
                     await api.createBuilding(

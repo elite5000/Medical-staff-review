@@ -38,6 +38,11 @@ class _RuleFormPageState extends State<RuleFormPage> {
   }
 
   Future<void> _save() async {
+    final name = _nameController.text.trim();
+    if (name.isEmpty) {
+      setState(() => _error = 'Name is required');
+      return;
+    }
     if (_roleId == null) {
       setState(() => _error = 'A role is required');
       return;
@@ -62,14 +67,14 @@ class _RuleFormPageState extends State<RuleFormPage> {
     try {
       if (_ruleType == RuleType.eligibilityRestriction) {
         await widget.api.createRule(
-          name: _nameController.text.trim(),
+          name: name,
           ruleType: _ruleType,
           roleId: _roleId!,
           tagId: _tagId,
         );
       } else {
         await widget.api.createRule(
-          name: _nameController.text.trim(),
+          name: name,
           ruleType: _ruleType,
           roleId: _roleId!,
           minimumCount: minimumCount,

@@ -13,7 +13,7 @@ import 'features/tags/tags_page.dart';
 class _Destination {
   final String label;
   final IconData icon;
-  final Widget Function(ApiClient) buildPage;
+  final Widget Function(ApiClient api, VoidCallback onDisconnect) buildPage;
 
   const _Destination({
     required this.label,
@@ -29,7 +29,12 @@ class _Destination {
 class AppShell extends StatefulWidget {
   final ApiClient api;
 
-  const AppShell({super.key, required this.api});
+  /// Clears the stored connection and returns to the pairing screen — the only way back
+  /// there once paired (see SettingsPage's "Disconnect" action), needed if the pairing
+  /// token changes or the admin wants to point this device at a different backend.
+  final VoidCallback onDisconnect;
+
+  const AppShell({super.key, required this.api, required this.onDisconnect});
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -42,48 +47,52 @@ class _AppShellState extends State<AppShell> {
     _Destination(
       label: 'Rosters',
       icon: Icons.calendar_month,
-      buildPage: (api) => RostersPage(api: api),
+      buildPage: (api, _) => RostersPage(api: api),
     ),
     _Destination(
       label: 'Staff',
       icon: Icons.people,
-      buildPage: (api) => StaffPage(api: api),
+      buildPage: (api, _) => StaffPage(api: api),
     ),
     _Destination(
       label: 'Buildings',
       icon: Icons.apartment,
-      buildPage: (api) => BuildingsPage(api: api),
+      buildPage: (api, _) => BuildingsPage(api: api),
     ),
     _Destination(
       label: 'Rooms',
       icon: Icons.meeting_room,
-      buildPage: (api) => RoomsPage(api: api),
+      buildPage: (api, _) => RoomsPage(api: api),
     ),
     _Destination(
       label: 'Tags',
       icon: Icons.label,
-      buildPage: (api) => TagsPage(api: api),
+      buildPage: (api, _) => TagsPage(api: api),
     ),
     _Destination(
       label: 'Roles',
       icon: Icons.badge,
-      buildPage: (api) => RolesPage(api: api),
+      buildPage: (api, _) => RolesPage(api: api),
     ),
     _Destination(
       label: 'Rules',
       icon: Icons.rule,
-      buildPage: (api) => RulesPage(api: api),
+      buildPage: (api, _) => RulesPage(api: api),
     ),
     _Destination(
       label: 'Settings',
       icon: Icons.settings,
-      buildPage: (api) => SettingsPage(api: api),
+      buildPage: (api, onDisconnect) =>
+          SettingsPage(api: api, onDisconnect: onDisconnect),
     ),
   ];
 
   @override
   Widget build(BuildContext context) {
-    final page = _destinations[_selectedIndex].buildPage(widget.api);
+    final page = _destinations[_selectedIndex].buildPage(
+      widget.api,
+      widget.onDisconnect,
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
