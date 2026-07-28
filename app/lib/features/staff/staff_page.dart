@@ -13,15 +13,30 @@ class StaffPage extends StatelessWidget {
 
   const StaffPage({super.key, required this.api});
 
-  Future<void> _openForm(BuildContext context, VoidCallback reload, {Staff? existing}) async {
-    final saved = await Navigator.of(
-      context,
-    ).push<bool>(MaterialPageRoute(builder: (_) => StaffFormPage(api: api, existing: existing)));
+  Future<void> _openForm(
+    BuildContext context,
+    VoidCallback reload, {
+    Staff? existing,
+  }) async {
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => StaffFormPage(api: api, existing: existing),
+      ),
+    );
     if (saved == true) reload();
   }
 
-  Future<void> _delete(BuildContext context, Staff person, VoidCallback reload) async {
-    if (!await confirmDialog(context, 'Delete staff member "${person.name}"?')) return;
+  Future<void> _delete(
+    BuildContext context,
+    Staff person,
+    VoidCallback reload,
+  ) async {
+    if (!await confirmDialog(
+      context,
+      'Delete staff member "${person.name}"?',
+    )) {
+      return;
+    }
     try {
       await api.deleteStaff(person.id);
       reload();

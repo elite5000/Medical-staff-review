@@ -15,7 +15,11 @@ class _Destination {
   final IconData icon;
   final Widget Function(ApiClient) buildPage;
 
-  const _Destination({required this.label, required this.icon, required this.buildPage});
+  const _Destination({
+    required this.label,
+    required this.icon,
+    required this.buildPage,
+  });
 }
 
 /// Adaptive navigation shell wrapping every resource screen: a NavigationRail on
@@ -40,16 +44,36 @@ class _AppShellState extends State<AppShell> {
       icon: Icons.calendar_month,
       buildPage: (api) => RostersPage(api: api),
     ),
-    _Destination(label: 'Staff', icon: Icons.people, buildPage: (api) => StaffPage(api: api)),
+    _Destination(
+      label: 'Staff',
+      icon: Icons.people,
+      buildPage: (api) => StaffPage(api: api),
+    ),
     _Destination(
       label: 'Buildings',
       icon: Icons.apartment,
       buildPage: (api) => BuildingsPage(api: api),
     ),
-    _Destination(label: 'Rooms', icon: Icons.meeting_room, buildPage: (api) => RoomsPage(api: api)),
-    _Destination(label: 'Tags', icon: Icons.label, buildPage: (api) => TagsPage(api: api)),
-    _Destination(label: 'Roles', icon: Icons.badge, buildPage: (api) => RolesPage(api: api)),
-    _Destination(label: 'Rules', icon: Icons.rule, buildPage: (api) => RulesPage(api: api)),
+    _Destination(
+      label: 'Rooms',
+      icon: Icons.meeting_room,
+      buildPage: (api) => RoomsPage(api: api),
+    ),
+    _Destination(
+      label: 'Tags',
+      icon: Icons.label,
+      buildPage: (api) => TagsPage(api: api),
+    ),
+    _Destination(
+      label: 'Roles',
+      icon: Icons.badge,
+      buildPage: (api) => RolesPage(api: api),
+    ),
+    _Destination(
+      label: 'Rules',
+      icon: Icons.rule,
+      buildPage: (api) => RulesPage(api: api),
+    ),
     _Destination(
       label: 'Settings',
       icon: Icons.settings,
@@ -70,10 +94,16 @@ class _AppShellState extends State<AppShell> {
               children: [
                 NavigationRail(
                   selectedIndex: _selectedIndex,
-                  onDestinationSelected: (index) => setState(() => _selectedIndex = index),
+                  onDestinationSelected: (index) =>
+                      setState(() => _selectedIndex = index),
                   labelType: NavigationRailLabelType.all,
                   destinations: _destinations
-                      .map((d) => NavigationRailDestination(icon: Icon(d.icon), label: Text(d.label)))
+                      .map(
+                        (d) => NavigationRailDestination(
+                          icon: Icon(d.icon),
+                          label: Text(d.label),
+                        ),
+                      )
                       .toList(),
                 ),
                 const VerticalDivider(width: 1),
@@ -87,9 +117,13 @@ class _AppShellState extends State<AppShell> {
           body: page,
           bottomNavigationBar: NavigationBar(
             selectedIndex: _selectedIndex,
-            onDestinationSelected: (index) => setState(() => _selectedIndex = index),
+            onDestinationSelected: (index) =>
+                setState(() => _selectedIndex = index),
             destinations: _destinations
-                .map((d) => NavigationDestination(icon: Icon(d.icon), label: d.label))
+                .map(
+                  (d) =>
+                      NavigationDestination(icon: Icon(d.icon), label: d.label),
+                )
                 .toList(),
           ),
         );

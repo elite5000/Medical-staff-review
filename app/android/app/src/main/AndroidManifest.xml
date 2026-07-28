@@ -1,8 +1,16 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- The debug/profile manifests get this from the Flutter template (for hot reload),
+         but release builds need it declared here too — every API call is plain http:// to
+         the backend on the admin's LAN, not a debug-only concern. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Broad, not scoped to one domain via a network security config — the backend's
+         host/port is whatever the admin pairs with (see connect_screen.dart), so there's no
+         fixed address to allowlist in advance. The pairing token is the real access gate. -->
     <application
         android:label="app"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="true">
         <activity
             android:name=".MainActivity"
             android:exported="true"

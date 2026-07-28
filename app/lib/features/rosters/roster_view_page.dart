@@ -6,7 +6,14 @@ import '../../api/models.dart';
 import '../../widgets/async_loader.dart';
 import '../../widgets/error_banner.dart';
 
-typedef _RosterViewData = (RosterDetail, List<Room>, List<Staff>, List<Building>, List<Tag>, List<Roster>);
+typedef _RosterViewData = (
+  RosterDetail,
+  List<Room>,
+  List<Staff>,
+  List<Building>,
+  List<Tag>,
+  List<Roster>,
+);
 
 /// Ported from frontend/src/pages/rosters/RosterViewPage.svelte.
 class RosterViewPage extends StatefulWidget {
@@ -44,7 +51,10 @@ class _RosterViewPageState extends State<RosterViewPage> {
     );
   }
 
-  Map<DateTime, List<Shift>> _shiftsByDate(RosterDetail roster, Map<int, Room> roomsById) {
+  Map<DateTime, List<Shift>> _shiftsByDate(
+    RosterDetail roster,
+    Map<int, Room> roomsById,
+  ) {
     final groups = <DateTime, List<Shift>>{};
     for (final shift in roster.shifts) {
       (groups[shift.date] ??= []).add(shift);
@@ -113,31 +123,51 @@ class _RosterViewPageState extends State<RosterViewPage> {
               ),
               if (roster.violations.isNotEmpty) ...[
                 const SizedBox(height: 16),
-                Text('Violations', style: Theme.of(context).textTheme.titleLarge),
+                Text(
+                  'Violations',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
                 for (final v in roster.violations)
-                  Text('• ${_violationLabel(v, roomsById, buildingsById, tagsById)}'),
+                  Text(
+                    '• ${_violationLabel(v, roomsById, buildingsById, tagsById)}',
+                  ),
               ],
               for (final date in sortedDates) ...[
                 const SizedBox(height: 16),
-                Text(dateToJson(date), style: Theme.of(context).textTheme.titleLarge),
+                Text(
+                  dateToJson(date),
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
                 const SizedBox(height: 4),
                 for (final shift in shiftsByDate[date]!)
                   Card(
                     margin: const EdgeInsets.only(bottom: 4),
                     child: ListTile(
-                      title: Text('${roomsById[shift.roomId]?.name ?? '—'} · shift ${shift.shiftIndex}'),
+                      title: Text(
+                        '${roomsById[shift.roomId]?.name ?? '—'} · shift ${shift.shiftIndex}',
+                      ),
                       subtitle: Text('Pinned: ${shift.pinned ? 'Yes' : 'No'}'),
                       trailing: isLatest
                           ? DropdownButton<int>(
                               value: shift.staffId,
                               items: staff
-                                  .map((s) => DropdownMenuItem(value: s.id, child: Text(s.name)))
+                                  .map(
+                                    (s) => DropdownMenuItem(
+                                      value: s.id,
+                                      child: Text(s.name),
+                                    ),
+                                  )
                                   .toList(),
                               onChanged: (value) {
-                                if (value != null) _reassign(shift, value, reload);
+                                if (value != null) {
+                                  _reassign(shift, value, reload);
+                                }
                               },
                             )
-                          : Text(staffById[shift.staffId]?.name ?? '${shift.staffId}'),
+                          : Text(
+                              staffById[shift.staffId]?.name ??
+                                  '${shift.staffId}',
+                            ),
                     ),
                   ),
               ],

@@ -12,7 +12,11 @@ class TagsPage extends StatelessWidget {
 
   const TagsPage({super.key, required this.api});
 
-  Future<void> _showForm(BuildContext context, VoidCallback reload, {Tag? existing}) async {
+  Future<void> _showForm(
+    BuildContext context,
+    VoidCallback reload, {
+    Tag? existing,
+  }) async {
     final controller = TextEditingController(text: existing?.name ?? '');
     String? error;
 
@@ -32,7 +36,12 @@ class TagsPage extends StatelessWidget {
               if (error != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: Text(error!, style: TextStyle(color: Theme.of(dialogContext).colorScheme.error)),
+                  child: Text(
+                    error!,
+                    style: TextStyle(
+                      color: Theme.of(dialogContext).colorScheme.error,
+                    ),
+                  ),
                 ),
             ],
           ),
@@ -54,7 +63,9 @@ class TagsPage extends StatelessWidget {
                   } else {
                     await api.updateTag(existing.id, name);
                   }
-                  if (dialogContext.mounted) Navigator.of(dialogContext).pop(true);
+                  if (dialogContext.mounted) {
+                    Navigator.of(dialogContext).pop(true);
+                  }
                 } on ApiException catch (e) {
                   setState(() => error = e.message);
                 }
@@ -68,16 +79,20 @@ class TagsPage extends StatelessWidget {
     if (saved == true) reload();
   }
 
-  Future<void> _delete(BuildContext context, Tag tag, VoidCallback reload) async {
+  Future<void> _delete(
+    BuildContext context,
+    Tag tag,
+    VoidCallback reload,
+  ) async {
     if (!await confirmDialog(context, 'Delete tag "${tag.name}"?')) return;
     try {
       await api.deleteTag(tag.id);
       reload();
     } on ApiException catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Could not delete tag: ${e.message}')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not delete tag: ${e.message}')),
+        );
       }
     }
   }

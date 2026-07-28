@@ -9,7 +9,11 @@ class UnavailabilityCalendar extends StatefulWidget {
   final List<Staff> staff;
   final int? highlightStaffId;
 
-  const UnavailabilityCalendar({super.key, required this.staff, this.highlightStaffId});
+  const UnavailabilityCalendar({
+    super.key,
+    required this.staff,
+    this.highlightStaffId,
+  });
 
   @override
   State<UnavailabilityCalendar> createState() => _UnavailabilityCalendarState();
@@ -26,11 +30,14 @@ class _UnavailabilityCalendarState extends State<UnavailabilityCalendar> {
   }
 
   void _shiftMonth(int delta) {
-    setState(() => _viewMonth = DateTime(_viewMonth.year, _viewMonth.month + delta));
+    setState(
+      () => _viewMonth = DateTime(_viewMonth.year, _viewMonth.month + delta),
+    );
   }
 
   // Golden-angle-ish spread keeps adjacent staff ids visually distinct.
-  Color _colorFor(int id) => HSLColor.fromAHSL(1, (id * 137) % 360, 0.65, 0.45).toColor();
+  Color _colorFor(int id) =>
+      HSLColor.fromAHSL(1, (id * 137) % 360, 0.65, 0.45).toColor();
 
   Map<int, List<Staff>> _unavailableByDay() {
     final map = <int, List<Staff>>{};
@@ -39,7 +46,9 @@ class _UnavailabilityCalendarState extends State<UnavailabilityCalendar> {
     final monthEnd = DateTime(_viewMonth.year, _viewMonth.month, daysInMonth);
     for (final person in widget.staff) {
       for (final u in person.unavailabilities) {
-        final start = u.startDate.isBefore(monthStart) ? monthStart : u.startDate;
+        final start = u.startDate.isBefore(monthStart)
+            ? monthStart
+            : u.startDate;
         final end = u.endDate.isAfter(monthEnd) ? monthEnd : u.endDate;
         if (start.isAfter(end)) continue;
         for (var day = start.day; day <= end.day; day++) {
@@ -75,18 +84,26 @@ class _UnavailabilityCalendarState extends State<UnavailabilityCalendar> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            IconButton(onPressed: () => _shiftMonth(-1), icon: const Icon(Icons.chevron_left)),
+            IconButton(
+              onPressed: () => _shiftMonth(-1),
+              icon: const Icon(Icons.chevron_left),
+            ),
             Text(
               '${_monthName(_viewMonth.month)} ${_viewMonth.year}',
               style: Theme.of(context).textTheme.titleMedium,
             ),
-            IconButton(onPressed: () => _shiftMonth(1), icon: const Icon(Icons.chevron_right)),
+            IconButton(
+              onPressed: () => _shiftMonth(1),
+              icon: const Icon(Icons.chevron_right),
+            ),
           ],
         ),
         GridView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 7),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 7,
+          ),
           itemCount: cells.length,
           itemBuilder: (context, index) {
             final day = cells[index];
@@ -95,7 +112,9 @@ class _UnavailabilityCalendarState extends State<UnavailabilityCalendar> {
             return Container(
               margin: const EdgeInsets.all(2),
               padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(border: Border.all(color: Theme.of(context).dividerColor)),
+              decoration: BoxDecoration(
+                border: Border.all(color: Theme.of(context).dividerColor),
+              ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
@@ -113,7 +132,10 @@ class _UnavailabilityCalendarState extends State<UnavailabilityCalendar> {
                                 color: _colorFor(person.id),
                                 shape: BoxShape.circle,
                                 border: person.id == widget.highlightStaffId
-                                    ? Border.all(color: Colors.black, width: 1.5)
+                                    ? Border.all(
+                                        color: Colors.black,
+                                        width: 1.5,
+                                      )
                                     : null,
                               ),
                             ),
@@ -140,7 +162,10 @@ class _UnavailabilityCalendarState extends State<UnavailabilityCalendar> {
                         Container(
                           width: 10,
                           height: 10,
-                          decoration: BoxDecoration(color: _colorFor(person.id), shape: BoxShape.circle),
+                          decoration: BoxDecoration(
+                            color: _colorFor(person.id),
+                            shape: BoxShape.circle,
+                          ),
                         ),
                         const SizedBox(width: 4),
                         Text(

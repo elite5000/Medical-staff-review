@@ -32,9 +32,7 @@ void main() {
       httpClient: client,
     );
 
-    await tester.pumpWidget(
-      MaterialApp(home: TagsPage(api: api)),
-    );
+    await tester.pumpWidget(MaterialApp(home: TagsPage(api: api)));
     await tester.pumpAndSettle();
 
     expect(find.text('General Practice'), findsOneWidget);

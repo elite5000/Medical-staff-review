@@ -11,11 +11,18 @@ import 'package:http/testing.dart';
 void main() {
   testWidgets('toggles preferred days independently per week', (tester) async {
     final client = MockClient((request) async {
-      if (request.url.path == '/roles') return http.Response(jsonEncode([]), 200);
-      if (request.url.path == '/staff') return http.Response(jsonEncode([]), 200);
+      if (request.url.path == '/roles') {
+        return http.Response(jsonEncode([]), 200);
+      }
+      if (request.url.path == '/staff') {
+        return http.Response(jsonEncode([]), 200);
+      }
       return http.Response('not found', 404);
     });
-    final api = ApiClient(ConnectionInfo(host: 'test', port: 1234), httpClient: client);
+    final api = ApiClient(
+      ConnectionInfo(host: 'test', port: 1234),
+      httpClient: client,
+    );
 
     await tester.pumpWidget(MaterialApp(home: StaffFormPage(api: api)));
     await tester.pumpAndSettle();

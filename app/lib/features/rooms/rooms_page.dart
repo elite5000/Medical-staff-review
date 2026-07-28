@@ -13,23 +13,33 @@ class RoomsPage extends StatelessWidget {
 
   const RoomsPage({super.key, required this.api});
 
-  Future<void> _openForm(BuildContext context, VoidCallback reload, {Room? existing}) async {
-    final saved = await Navigator.of(
-      context,
-    ).push<bool>(MaterialPageRoute(builder: (_) => RoomFormPage(api: api, existing: existing)));
+  Future<void> _openForm(
+    BuildContext context,
+    VoidCallback reload, {
+    Room? existing,
+  }) async {
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => RoomFormPage(api: api, existing: existing),
+      ),
+    );
     if (saved == true) reload();
   }
 
-  Future<void> _delete(BuildContext context, Room room, VoidCallback reload) async {
+  Future<void> _delete(
+    BuildContext context,
+    Room room,
+    VoidCallback reload,
+  ) async {
     if (!await confirmDialog(context, 'Delete room "${room.name}"?')) return;
     try {
       await api.deleteRoom(room.id);
       reload();
     } on ApiException catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Could not delete room: ${e.message}')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not delete room: ${e.message}')),
+        );
       }
     }
   }

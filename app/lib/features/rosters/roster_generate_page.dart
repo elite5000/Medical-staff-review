@@ -46,9 +46,11 @@ class _RosterGeneratePageState extends State<RosterGeneratePage> {
       // Replaces this page with the roster view, then reports back to RostersPage (via the
       // original push's Future) that a new roster was generated so its list refreshes.
       Navigator.of(context).pop(true);
-      Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (_) => RosterViewPage(api: widget.api, rosterId: roster.id)));
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => RosterViewPage(api: widget.api, rosterId: roster.id),
+        ),
+      );
     } on ApiException catch (e) {
       setState(() {
         _generating = false;
@@ -75,7 +77,9 @@ class _RosterGeneratePageState extends State<RosterGeneratePage> {
               );
               if (picked != null) setState(() => _startDate = picked);
             },
-            child: Text(_startDate == null ? 'Start date' : dateToJson(_startDate!)),
+            child: Text(
+              _startDate == null ? 'Start date' : dateToJson(_startDate!),
+            ),
           ),
           const SizedBox(height: 16),
           TextField(
@@ -86,7 +90,9 @@ class _RosterGeneratePageState extends State<RosterGeneratePage> {
           const SizedBox(height: 16),
           FilledButton(
             onPressed: _generating ? null : _generate,
-            child: _generating ? const Text('Generating…') : const Text('Generate'),
+            child: _generating
+                ? const Text('Generating…')
+                : const Text('Generate'),
           ),
         ],
       ),

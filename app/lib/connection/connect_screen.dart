@@ -52,12 +52,13 @@ class _ConnectScreenState extends State<ConnectScreen> {
       _connecting = true;
       _error = null;
     });
-    final reachable = await ApiClient(info).checkHealth();
+    final reachable = await ApiClient(info).verifyConnection();
     if (!mounted) return;
     if (!reachable) {
       setState(() {
         _connecting = false;
-        _error = 'Could not reach ${info.baseUrl}. Check the address and that the backend is running.';
+        _error =
+            'Could not reach ${info.baseUrl}. Check the address and that the backend is running.';
       });
       return;
     }
@@ -75,15 +76,17 @@ class _ConnectScreenState extends State<ConnectScreen> {
       ConnectionInfo(
         host: _hostController.text.trim(),
         port: port,
-        token: _tokenController.text.trim().isEmpty ? null : _tokenController.text.trim(),
+        token: _tokenController.text.trim().isEmpty
+            ? null
+            : _tokenController.text.trim(),
       ),
     );
   }
 
   Future<void> _scanQr() async {
-    final info = await Navigator.of(
-      context,
-    ).push<ConnectionInfo>(MaterialPageRoute(builder: (_) => const QrScanPage()));
+    final info = await Navigator.of(context).push<ConnectionInfo>(
+      MaterialPageRoute(builder: (_) => const QrScanPage()),
+    );
     if (info != null) {
       await _connectWith(info);
     }
@@ -101,7 +104,10 @@ class _ConnectScreenState extends State<ConnectScreen> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('Connect to Medical Staff Review', style: Theme.of(context).textTheme.headlineSmall),
+                Text(
+                  'Connect to Medical Staff Review',
+                  style: Theme.of(context).textTheme.headlineSmall,
+                ),
                 const SizedBox(height: 8),
                 const Text(
                   "Get the connection details from the tray app's \"Show connection QR\" menu "
@@ -116,13 +122,22 @@ class _ConnectScreenState extends State<ConnectScreen> {
                   ),
                   const SizedBox(height: 16),
                   const Row(
-                    children: [Expanded(child: Divider()), Padding(padding: EdgeInsets.symmetric(horizontal: 8), child: Text('or enter manually')), Expanded(child: Divider())],
+                    children: [
+                      Expanded(child: Divider()),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        child: Text('or enter manually'),
+                      ),
+                      Expanded(child: Divider()),
+                    ],
                   ),
                   const SizedBox(height: 16),
                 ],
                 TextField(
                   controller: _hostController,
-                  decoration: const InputDecoration(labelText: 'Host / IP address'),
+                  decoration: const InputDecoration(
+                    labelText: 'Host / IP address',
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -138,13 +153,22 @@ class _ConnectScreenState extends State<ConnectScreen> {
                 ),
                 if (_error != null) ...[
                   const SizedBox(height: 12),
-                  Text(_error!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                  Text(
+                    _error!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
                 ],
                 const SizedBox(height: 16),
                 FilledButton(
                   onPressed: _connecting ? null : _connectManually,
                   child: _connecting
-                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
                       : const Text('Connect'),
                 ),
               ],

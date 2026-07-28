@@ -44,13 +44,20 @@ class Room {
   final int buildingId;
   final List<Tag> tags;
 
-  Room({required this.id, required this.name, required this.buildingId, required this.tags});
+  Room({
+    required this.id,
+    required this.name,
+    required this.buildingId,
+    required this.tags,
+  });
 
   factory Room.fromJson(Map<String, dynamic> json) => Room(
     id: json['id'] as int,
     name: json['name'] as String,
     buildingId: json['building_id'] as int,
-    tags: (json['tags'] as List).map((t) => Tag.fromJson(t as Map<String, dynamic>)).toList(),
+    tags: (json['tags'] as List)
+        .map((t) => Tag.fromJson(t as Map<String, dynamic>))
+        .toList(),
   );
 }
 
@@ -71,8 +78,10 @@ class PreferredDay {
 
   PreferredDay({required this.week, required this.dayOfWeek});
 
-  factory PreferredDay.fromJson(Map<String, dynamic> json) =>
-      PreferredDay(week: json['week'] as int, dayOfWeek: json['day_of_week'] as int);
+  factory PreferredDay.fromJson(Map<String, dynamic> json) => PreferredDay(
+    week: json['week'] as int,
+    dayOfWeek: json['day_of_week'] as int,
+  );
 
   Map<String, dynamic> toJson() => {'week': week, 'day_of_week': dayOfWeek};
 }
@@ -122,7 +131,9 @@ class Staff {
     id: json['id'] as int,
     name: json['name'] as String,
     active: json['active'] as bool,
-    roles: (json['roles'] as List).map((r) => Role.fromJson(r as Map<String, dynamic>)).toList(),
+    roles: (json['roles'] as List)
+        .map((r) => Role.fromJson(r as Map<String, dynamic>))
+        .toList(),
     preferredDays: (json['preferred_days'] as List)
         .map((d) => PreferredDay.fromJson(d as Map<String, dynamic>))
         .toList(),
@@ -252,17 +263,18 @@ class RosterViolation {
     this.detail,
   });
 
-  factory RosterViolation.fromJson(Map<String, dynamic> json) => RosterViolation(
-    id: json['id'] as int,
-    violationType: ViolationType.fromJson(json['violation_type'] as String),
-    ruleId: json['rule_id'] as int?,
-    buildingId: json['building_id'] as int?,
-    tagId: json['tag_id'] as int?,
-    roomId: json['room_id'] as int?,
-    date: DateTime.parse(json['date'] as String),
-    shiftIndex: json['shift_index'] as int,
-    detail: json['detail'] as String?,
-  );
+  factory RosterViolation.fromJson(Map<String, dynamic> json) =>
+      RosterViolation(
+        id: json['id'] as int,
+        violationType: ViolationType.fromJson(json['violation_type'] as String),
+        ruleId: json['rule_id'] as int?,
+        buildingId: json['building_id'] as int?,
+        tagId: json['tag_id'] as int?,
+        roomId: json['room_id'] as int?,
+        date: DateTime.parse(json['date'] as String),
+        shiftIndex: json['shift_index'] as int,
+        detail: json['detail'] as String?,
+      );
 }
 
 class Roster {

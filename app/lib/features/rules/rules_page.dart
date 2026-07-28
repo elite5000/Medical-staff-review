@@ -15,8 +15,14 @@ class RulesPage extends StatelessWidget {
 
   const RulesPage({super.key, required this.api});
 
-  String _target(Rule rule, Map<int, Building> buildingsById, Map<int, Tag> tagsById) {
-    if (rule.buildingId != null) return 'Building: ${buildingsById[rule.buildingId]?.name ?? '—'}';
+  String _target(
+    Rule rule,
+    Map<int, Building> buildingsById,
+    Map<int, Tag> tagsById,
+  ) {
+    if (rule.buildingId != null) {
+      return 'Building: ${buildingsById[rule.buildingId]?.name ?? '—'}';
+    }
     if (rule.tagId != null) return 'Tag: ${tagsById[rule.tagId]?.name ?? '—'}';
     return '—';
   }
@@ -28,7 +34,11 @@ class RulesPage extends StatelessWidget {
     if (created == true) reload();
   }
 
-  Future<void> _delete(BuildContext context, Rule rule, VoidCallback reload) async {
+  Future<void> _delete(
+    BuildContext context,
+    Rule rule,
+    VoidCallback reload,
+  ) async {
     if (!await confirmDialog(context, 'Delete rule "${rule.name}"?')) return;
     try {
       await api.deleteRule(rule.id);
@@ -37,7 +47,9 @@ class RulesPage extends StatelessWidget {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Could not delete rule — it may be referenced by past roster violation history'),
+            content: Text(
+              'Could not delete rule — it may be referenced by past roster violation history',
+            ),
           ),
         );
       }

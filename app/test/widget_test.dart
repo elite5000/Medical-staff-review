@@ -8,7 +8,9 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('shows the connect screen when no backend has been paired', (tester) async {
+  testWidgets('shows the connect screen when no backend has been paired', (
+    tester,
+  ) async {
     await tester.pumpWidget(const MedicalStaffReviewApp());
     await tester.pumpAndSettle();
 
@@ -20,7 +22,10 @@ void main() {
     await tester.pumpWidget(const MedicalStaffReviewApp());
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.widgetWithText(TextField, 'Host / IP address'), '');
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Host / IP address'),
+      '',
+    );
     await tester.tap(find.widgetWithText(FilledButton, 'Connect'));
     await tester.pump();
 

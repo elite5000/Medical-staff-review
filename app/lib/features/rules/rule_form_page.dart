@@ -102,7 +102,10 @@ class _RuleFormPageState extends State<RuleFormPage> {
                 initialValue: _ruleType,
                 decoration: const InputDecoration(labelText: 'Rule type'),
                 items: const [
-                  DropdownMenuItem(value: RuleType.minimumCount, child: Text('Minimum count')),
+                  DropdownMenuItem(
+                    value: RuleType.minimumCount,
+                    child: Text('Minimum count'),
+                  ),
                   DropdownMenuItem(
                     value: RuleType.eligibilityRestriction,
                     child: Text('Eligibility restriction'),
@@ -114,7 +117,11 @@ class _RuleFormPageState extends State<RuleFormPage> {
               DropdownButtonFormField<int>(
                 initialValue: _roleId,
                 decoration: const InputDecoration(labelText: 'Role'),
-                items: roles.map((r) => DropdownMenuItem(value: r.id, child: Text(r.name))).toList(),
+                items: roles
+                    .map(
+                      (r) => DropdownMenuItem(value: r.id, child: Text(r.name)),
+                    )
+                    .toList(),
                 onChanged: (value) => setState(() => _roleId = value),
               ),
               const SizedBox(height: 16),
@@ -123,26 +130,50 @@ class _RuleFormPageState extends State<RuleFormPage> {
                   initialValue: _targetType,
                   decoration: const InputDecoration(labelText: 'Applies to'),
                   items: const [
-                    DropdownMenuItem(value: _TargetType.building, child: Text('Building')),
-                    DropdownMenuItem(value: _TargetType.tag, child: Text('Tag')),
+                    DropdownMenuItem(
+                      value: _TargetType.building,
+                      child: Text('Building'),
+                    ),
+                    DropdownMenuItem(
+                      value: _TargetType.tag,
+                      child: Text('Tag'),
+                    ),
                   ],
                   onChanged: (value) => setState(() => _targetType = value!),
                 ),
                 const SizedBox(height: 16),
+                // Distinct Keys matter: without them, Flutter reuses the same FormFieldState
+                // across the Building<->Tag swap (same widget type, same tree position), so
+                // the dropdown keeps showing the previous target type's stale selected value
+                // — which usually isn't a valid id in the new items list.
                 if (_targetType == _TargetType.building)
                   DropdownButtonFormField<int>(
+                    key: const ValueKey('applies-to-building'),
                     initialValue: _buildingId,
                     decoration: const InputDecoration(labelText: 'Building'),
                     items: buildings
-                        .map((b) => DropdownMenuItem(value: b.id, child: Text(b.name)))
+                        .map(
+                          (b) => DropdownMenuItem(
+                            value: b.id,
+                            child: Text(b.name),
+                          ),
+                        )
                         .toList(),
                     onChanged: (value) => setState(() => _buildingId = value),
                   )
                 else
                   DropdownButtonFormField<int>(
+                    key: const ValueKey('applies-to-tag'),
                     initialValue: _tagId,
                     decoration: const InputDecoration(labelText: 'Tag'),
-                    items: tags.map((t) => DropdownMenuItem(value: t.id, child: Text(t.name))).toList(),
+                    items: tags
+                        .map(
+                          (t) => DropdownMenuItem(
+                            value: t.id,
+                            child: Text(t.name),
+                          ),
+                        )
+                        .toList(),
                     onChanged: (value) => setState(() => _tagId = value),
                   ),
                 const SizedBox(height: 16),
@@ -155,14 +186,23 @@ class _RuleFormPageState extends State<RuleFormPage> {
                 DropdownButtonFormField<int>(
                   initialValue: _tagId,
                   decoration: const InputDecoration(labelText: 'Tag'),
-                  items: tags.map((t) => DropdownMenuItem(value: t.id, child: Text(t.name))).toList(),
+                  items: tags
+                      .map(
+                        (t) =>
+                            DropdownMenuItem(value: t.id, child: Text(t.name)),
+                      )
+                      .toList(),
                   onChanged: (value) => setState(() => _tagId = value),
                 ),
               const SizedBox(height: 16),
               FilledButton(
                 onPressed: _saving ? null : _save,
                 child: _saving
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Text('Save'),
               ),
             ],

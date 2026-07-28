@@ -101,7 +101,24 @@ def _show_connection_window() -> None:
     image_label.image = photo  # type: ignore[attr-defined]  # keep a reference alive
     image_label.pack(padx=16, pady=(16, 8))
 
-    ttk.Label(window, text=f"{_lan_ip()}:{PORT}", font=("Segoe UI", 12)).pack(pady=(0, 16))
+    ttk.Label(window, text=f"{_lan_ip()}:{PORT}", font=("Segoe UI", 12)).pack()
+
+    # QR scanning is Android-only (see connect_screen.dart's _isMobile) — Windows and macOS
+    # clients must type host/port/token by hand, so the token needs to be shown here too,
+    # not just embedded in the QR image. A read-only Entry (rather than a Label) lets the
+    # admin select and copy it directly, backed up by an explicit copy-to-clipboard button.
+    token = settings.pairing_token or ""
+    token_var = tk.StringVar(value=token)
+    token_entry = ttk.Entry(
+        window, textvariable=token_var, state="readonly", width=36, justify="center"
+    )
+    token_entry.pack(padx=16, pady=(8, 4))
+
+    def copy_token() -> None:
+        window.clipboard_clear()
+        window.clipboard_append(token)
+
+    ttk.Button(window, text="Copy token", command=copy_token).pack(pady=(0, 16))
     window.mainloop()
 
 

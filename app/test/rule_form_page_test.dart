@@ -23,7 +23,12 @@ void main() {
       if (request.url.path == '/buildings') {
         return http.Response(
           jsonEncode([
-            {'id': 1, 'name': 'Main Building', 'opening_minutes': 480, 'closing_minutes': 1020},
+            {
+              'id': 1,
+              'name': 'Main Building',
+              'opening_minutes': 480,
+              'closing_minutes': 1020,
+            },
           ]),
           200,
         );
@@ -38,26 +43,30 @@ void main() {
       }
       return http.Response('not found', 404);
     });
-    return ApiClient(ConnectionInfo(host: 'test', port: 1234), httpClient: client);
+    return ApiClient(
+      ConnectionInfo(host: 'test', port: 1234),
+      httpClient: client,
+    );
   }
 
-  testWidgets('minimum-count rules show target/count fields; eligibility rules do not', (
-    tester,
-  ) async {
-    await tester.pumpWidget(MaterialApp(home: RuleFormPage(api: buildApi())));
-    await tester.pumpAndSettle();
+  testWidgets(
+    'minimum-count rules show target/count fields; eligibility rules do not',
+    (tester) async {
+      await tester.pumpWidget(MaterialApp(home: RuleFormPage(api: buildApi())));
+      await tester.pumpAndSettle();
 
-    // Default rule type is minimum_count.
-    expect(find.text('Applies to'), findsOneWidget);
-    expect(find.widgetWithText(TextField, 'Minimum count'), findsOneWidget);
+      // Default rule type is minimum_count.
+      expect(find.text('Applies to'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Minimum count'), findsOneWidget);
 
-    await tester.tap(find.byType(DropdownButtonFormField<RuleType>));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Eligibility restriction').last);
-    await tester.pumpAndSettle();
+      await tester.tap(find.byType(DropdownButtonFormField<RuleType>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Eligibility restriction').last);
+      await tester.pumpAndSettle();
 
-    expect(find.text('Applies to'), findsNothing);
-    expect(find.widgetWithText(TextField, 'Minimum count'), findsNothing);
-    expect(find.text('Tag'), findsOneWidget);
-  });
+      expect(find.text('Applies to'), findsNothing);
+      expect(find.widgetWithText(TextField, 'Minimum count'), findsNothing);
+      expect(find.text('Tag'), findsOneWidget);
+    },
+  );
 }

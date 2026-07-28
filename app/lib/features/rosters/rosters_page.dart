@@ -29,27 +29,33 @@ class RostersPage extends StatelessWidget {
   const RostersPage({super.key, required this.api});
 
   Future<void> _generate(BuildContext context, VoidCallback reload) async {
-    final generated = await Navigator.of(
-      context,
-    ).push<bool>(MaterialPageRoute(builder: (_) => RosterGeneratePage(api: api)));
+    final generated = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => RosterGeneratePage(api: api)),
+    );
     if (generated == true) reload();
   }
 
   Future<void> _view(BuildContext context, Roster roster) async {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => RosterViewPage(api: api, rosterId: roster.id)));
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => RosterViewPage(api: api, rosterId: roster.id),
+      ),
+    );
   }
 
-  Future<void> _regenerate(BuildContext context, Roster roster, VoidCallback reload) async {
+  Future<void> _regenerate(
+    BuildContext context,
+    Roster roster,
+    VoidCallback reload,
+  ) async {
     try {
       await api.regenerateRoster(roster.id);
       reload();
     } on ApiException catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Could not regenerate roster: ${e.message}')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not regenerate roster: ${e.message}')),
+        );
       }
     }
   }
@@ -74,7 +80,9 @@ class RostersPage extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final roster = rosters[index];
                     return ListTile(
-                      title: Text('${dateToJson(roster.startDate)} – ${dateToJson(roster.endDate)}'),
+                      title: Text(
+                        '${dateToJson(roster.startDate)} – ${dateToJson(roster.endDate)}',
+                      ),
                       subtitle: Text(
                         'Generated ${roster.generatedAt} · '
                         'Violations: ${roster.hasViolations ? 'Yes' : 'No'}',
@@ -82,7 +90,8 @@ class RostersPage extends StatelessWidget {
                       onTap: () => _view(context, roster),
                       trailing: latestIds.contains(roster.id)
                           ? TextButton(
-                              onPressed: () => _regenerate(context, roster, reload),
+                              onPressed: () =>
+                                  _regenerate(context, roster, reload),
                               child: const Text('Regenerate'),
                             )
                           : null,

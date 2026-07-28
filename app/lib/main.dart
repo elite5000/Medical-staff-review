@@ -17,7 +17,9 @@ class MedicalStaffReviewApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Medical Staff Review',
-      theme: ThemeData(colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal)),
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
+      ),
       home: const _RootPage(),
     );
   }
@@ -50,7 +52,7 @@ class _RootPageState extends State<_RootPage> {
       return;
     }
     final api = ApiClient(stored);
-    final reachable = await api.checkHealth();
+    final reachable = await api.verifyConnection();
     if (!mounted) return;
     setState(() {
       _api = reachable ? api : null;

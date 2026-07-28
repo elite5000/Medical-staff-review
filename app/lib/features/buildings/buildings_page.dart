@@ -17,15 +17,25 @@ class BuildingsPage extends StatelessWidget {
 
   const BuildingsPage({super.key, required this.api});
 
-  Future<void> _showForm(BuildContext context, VoidCallback reload, {Building? existing}) async {
+  Future<void> _showForm(
+    BuildContext context,
+    VoidCallback reload, {
+    Building? existing,
+  }) async {
     final nameController = TextEditingController(text: existing?.name ?? '');
     // 08:00-16:00 divides evenly into the default 240-minute shift length (see
     // BuildingFormPage.svelte's comment on the same default).
     TimeOfDay opening = existing != null
-        ? TimeOfDay(hour: existing.openingMinutes ~/ 60, minute: existing.openingMinutes % 60)
+        ? TimeOfDay(
+            hour: existing.openingMinutes ~/ 60,
+            minute: existing.openingMinutes % 60,
+          )
         : const TimeOfDay(hour: 8, minute: 0);
     TimeOfDay closing = existing != null
-        ? TimeOfDay(hour: existing.closingMinutes ~/ 60, minute: existing.closingMinutes % 60)
+        ? TimeOfDay(
+            hour: existing.closingMinutes ~/ 60,
+            minute: existing.closingMinutes % 60,
+          )
         : const TimeOfDay(hour: 16, minute: 0);
     String? error;
 
@@ -49,7 +59,10 @@ class BuildingsPage extends StatelessWidget {
                 title: const Text('Opening time'),
                 trailing: Text(opening.format(dialogContext)),
                 onTap: () async {
-                  final picked = await showTimePicker(context: dialogContext, initialTime: opening);
+                  final picked = await showTimePicker(
+                    context: dialogContext,
+                    initialTime: opening,
+                  );
                   if (picked != null) setState(() => opening = picked);
                 },
               ),
@@ -58,14 +71,22 @@ class BuildingsPage extends StatelessWidget {
                 title: const Text('Closing time'),
                 trailing: Text(closing.format(dialogContext)),
                 onTap: () async {
-                  final picked = await showTimePicker(context: dialogContext, initialTime: closing);
+                  final picked = await showTimePicker(
+                    context: dialogContext,
+                    initialTime: closing,
+                  );
                   if (picked != null) setState(() => closing = picked);
                 },
               ),
               if (error != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: Text(error!, style: TextStyle(color: Theme.of(dialogContext).colorScheme.error)),
+                  child: Text(
+                    error!,
+                    style: TextStyle(
+                      color: Theme.of(dialogContext).colorScheme.error,
+                    ),
+                  ),
                 ),
             ],
           ),
@@ -98,7 +119,9 @@ class BuildingsPage extends StatelessWidget {
                       closingMinutes: closingMinutes,
                     );
                   }
-                  if (dialogContext.mounted) Navigator.of(dialogContext).pop(true);
+                  if (dialogContext.mounted) {
+                    Navigator.of(dialogContext).pop(true);
+                  }
                 } on ApiException catch (e) {
                   setState(() => error = e.message);
                 }
@@ -112,16 +135,22 @@ class BuildingsPage extends StatelessWidget {
     if (saved == true) reload();
   }
 
-  Future<void> _delete(BuildContext context, Building building, VoidCallback reload) async {
-    if (!await confirmDialog(context, 'Delete building "${building.name}"?')) return;
+  Future<void> _delete(
+    BuildContext context,
+    Building building,
+    VoidCallback reload,
+  ) async {
+    if (!await confirmDialog(context, 'Delete building "${building.name}"?')) {
+      return;
+    }
     try {
       await api.deleteBuilding(building.id);
       reload();
     } on ApiException catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Could not delete building: ${e.message}')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not delete building: ${e.message}')),
+        );
       }
     }
   }

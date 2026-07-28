@@ -13,7 +13,8 @@ class ApiClient {
   final ConnectionInfo connection;
   final http.Client _http;
 
-  ApiClient(this.connection, {http.Client? httpClient}) : _http = httpClient ?? http.Client();
+  ApiClient(this.connection, {http.Client? httpClient})
+    : _http = httpClient ?? http.Client();
 
   Map<String, String> get _headers => {
     'Content-Type': 'application/json',
@@ -31,22 +32,51 @@ class ApiClient {
     throw ApiException.fromResponseBody(response.statusCode, body);
   }
 
-  Future<dynamic> _get(String path) async =>
-      _decodeOrThrow(await _http.get(_uri(path), headers: _headers));
-
-  Future<dynamic> _post(String path, [Object? body]) async =>
-      _decodeOrThrow(await _http.post(_uri(path), headers: _headers, body: jsonEncode(body ?? {})));
-
-  Future<dynamic> _patch(String path, Object body) async =>
-      _decodeOrThrow(await _http.patch(_uri(path), headers: _headers, body: jsonEncode(body)));
-
-  Future<void> _delete(String path) async {
-    await _decodeOrThrow(await _http.delete(_uri(path), headers: _headers));
+  /// Every _get/_post/_patch/_delete call routes through here so a dropped LAN connection,
+  /// DNS failure, or timeout — which `http.Client` throws as a plain exception before any
+  /// response exists — becomes an [ApiException] too. UI code only ever catches
+  /// `on ApiException`, so without this a transport failure would escape those handlers
+  /// entirely and leave in-progress state (e.g. a form's "saving" flag) stuck.
+  Future<dynamic> _send(Future<http.Response> Function() request) async {
+    final http.Response response;
+    try {
+      response = await request().timeout(const Duration(seconds: 15));
+    } catch (_) {
+      throw ApiException(
+        0,
+        'Could not reach the server. Check your connection and try again.',
+      );
+    }
+    return _decodeOrThrow(response);
   }
 
-  Future<bool> checkHealth() async {
+  Future<dynamic> _get(String path) =>
+      _send(() => _http.get(_uri(path), headers: _headers));
+
+  Future<dynamic> _post(String path, [Object? body]) => _send(
+    () =>
+        _http.post(_uri(path), headers: _headers, body: jsonEncode(body ?? {})),
+  );
+
+  Future<dynamic> _patch(String path, Object body) => _send(
+    () => _http.patch(_uri(path), headers: _headers, body: jsonEncode(body)),
+  );
+
+  Future<void> _delete(String path) async {
+    await _send(() => _http.delete(_uri(path), headers: _headers));
+  }
+
+  /// True only if the server is reachable AND (in packaged builds) the pairing token is
+  /// correct. Deliberately hits a protected endpoint (`/settings`, always present, no side
+  /// effects) rather than `/health` — `/health` is intentionally exempt from the
+  /// pairing-token check (see backend/app/main.py's require_pairing_token), so pinging it
+  /// alone would let a wrong/blank token through pairing, only to have every real request
+  /// 401 afterward with no way back to the connect screen short of clearing app storage.
+  Future<bool> verifyConnection() async {
     try {
-      final response = await _http.get(_uri('/health')).timeout(const Duration(seconds: 5));
+      final response = await _http
+          .get(_uri('/settings'), headers: _headers)
+          .timeout(const Duration(seconds: 5));
       return response.statusCode == 200;
     } catch (_) {
       return false;
@@ -56,7 +86,9 @@ class ApiClient {
   // --- Buildings ---
 
   Future<List<Building>> listBuildings() async =>
-      ((await _get('/buildings')) as List).map((j) => Building.fromJson(j)).toList();
+      ((await _get('/buildings')) as List)
+          .map((j) => Building.fromJson(j))
+          .toList();
 
   Future<Building> createBuilding({
     required String name,
@@ -95,17 +127,25 @@ class ApiClient {
     required int buildingId,
     List<int> tagIds = const [],
   }) async => Room.fromJson(
-    await _post('/rooms', {'name': name, 'building_id': buildingId, 'tag_ids': tagIds}),
+    await _post('/rooms', {
+      'name': name,
+      'building_id': buildingId,
+      'tag_ids': tagIds,
+    }),
   );
 
-  Future<Room> updateRoom(int id, {String? name, int? buildingId, List<int>? tagIds}) async =>
-      Room.fromJson(
-        await _patch('/rooms/$id', {
-          'name': ?name,
-          'building_id': ?buildingId,
-          'tag_ids': ?tagIds,
-        }),
-      );
+  Future<Room> updateRoom(
+    int id, {
+    String? name,
+    int? buildingId,
+    List<int>? tagIds,
+  }) async => Room.fromJson(
+    await _patch('/rooms/$id', {
+      'name': ?name,
+      'building_id': ?buildingId,
+      'tag_ids': ?tagIds,
+    }),
+  );
 
   Future<void> deleteRoom(int id) => _delete('/rooms/$id');
 
@@ -114,7 +154,8 @@ class ApiClient {
   Future<List<Tag>> listTags() async =>
       ((await _get('/tags')) as List).map((j) => Tag.fromJson(j)).toList();
 
-  Future<Tag> createTag(String name) async => Tag.fromJson(await _post('/tags', {'name': name}));
+  Future<Tag> createTag(String name) async =>
+      Tag.fromJson(await _post('/tags', {'name': name}));
 
   Future<Tag> updateTag(int id, String name) async =>
       Tag.fromJson(await _patch('/tags/$id', {'name': name}));
@@ -164,7 +205,8 @@ class ApiClient {
       'name': ?name,
       'active': ?active,
       'role_ids': ?roleIds,
-      if (preferredDays != null) 'preferred_days': preferredDays.map((d) => d.toJson()).toList(),
+      if (preferredDays != null)
+        'preferred_days': preferredDays.map((d) => d.toJson()).toList(),
     }),
   );
 
@@ -213,7 +255,8 @@ class ApiClient {
 
   // --- Settings ---
 
-  Future<AppSettings> getSettings() async => AppSettings.fromJson(await _get('/settings'));
+  Future<AppSettings> getSettings() async =>
+      AppSettings.fromJson(await _get('/settings'));
 
   Future<AppSettings> updateSettings({
     int? shiftLengthMinutes,
@@ -229,13 +272,19 @@ class ApiClient {
 
   // --- Rosters ---
 
-  Future<List<Roster>> listRosters() async =>
-      ((await _get('/rosters')) as List).map((j) => Roster.fromJson(j)).toList();
+  Future<List<Roster>> listRosters() async => ((await _get('/rosters')) as List)
+      .map((j) => Roster.fromJson(j))
+      .toList();
 
-  Future<Roster> generateRoster({required DateTime startDate, int numDays = 14}) async =>
-      Roster.fromJson(
-        await _post('/rosters', {'start_date': dateToJson(startDate), 'num_days': numDays}),
-      );
+  Future<Roster> generateRoster({
+    required DateTime startDate,
+    int numDays = 14,
+  }) async => Roster.fromJson(
+    await _post('/rosters', {
+      'start_date': dateToJson(startDate),
+      'num_days': numDays,
+    }),
+  );
 
   Future<RosterDetail> getRoster(int id) async =>
       RosterDetail.fromJson(await _get('/rosters/$id'));
@@ -243,6 +292,11 @@ class ApiClient {
   Future<Roster> regenerateRoster(int id) async =>
       Roster.fromJson(await _post('/rosters/$id/regenerate'));
 
-  Future<Shift> updateShift(int rosterId, int shiftId, {required int staffId}) async =>
-      Shift.fromJson(await _patch('/rosters/$rosterId/shifts/$shiftId', {'staff_id': staffId}));
+  Future<Shift> updateShift(
+    int rosterId,
+    int shiftId, {
+    required int staffId,
+  }) async => Shift.fromJson(
+    await _patch('/rosters/$rosterId/shifts/$shiftId', {'staff_id': staffId}),
+  );
 }

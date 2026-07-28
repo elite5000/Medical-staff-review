@@ -39,6 +39,33 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _save() async {
+    // ApiClient.updateSettings omits null fields from the PATCH body entirely (so a partial
+    // update only touches the fields you pass) — an unparseable/empty field must be caught
+    // here rather than silently sent as null, or the backend keeps its old value while this
+    // page claims "Saved." with the invalid text still showing.
+    final shiftLengthMinutes = int.tryParse(_shiftLengthController.text.trim());
+    final travelTimeMinutes = int.tryParse(_travelTimeController.text.trim());
+    final maxDailyMinutes = int.tryParse(_maxDailyController.text.trim());
+    if (shiftLengthMinutes == null || shiftLengthMinutes <= 0) {
+      setState(
+        () => _error = 'Shift length must be a positive number of minutes',
+      );
+      return;
+    }
+    if (travelTimeMinutes == null || travelTimeMinutes < 0) {
+      setState(
+        () =>
+            _error = 'Travel time must be zero or a positive number of minutes',
+      );
+      return;
+    }
+    if (maxDailyMinutes == null || maxDailyMinutes <= 0) {
+      setState(
+        () => _error = 'Max daily hours must be a positive number of minutes',
+      );
+      return;
+    }
+
     setState(() {
       _saving = true;
       _error = null;
@@ -46,9 +73,9 @@ class _SettingsPageState extends State<SettingsPage> {
     });
     try {
       await widget.api.updateSettings(
-        shiftLengthMinutes: int.tryParse(_shiftLengthController.text.trim()),
-        travelTimeMinutes: int.tryParse(_travelTimeController.text.trim()),
-        maxDailyMinutes: int.tryParse(_maxDailyController.text.trim()),
+        shiftLengthMinutes: shiftLengthMinutes,
+        travelTimeMinutes: travelTimeMinutes,
+        maxDailyMinutes: maxDailyMinutes,
       );
       setState(() {
         _saving = false;
@@ -73,29 +100,42 @@ class _SettingsPageState extends State<SettingsPage> {
           children: [
             ErrorBanner(message: _error),
             if (_saved)
-              const Padding(padding: EdgeInsets.only(bottom: 12), child: Text('Saved.')),
+              const Padding(
+                padding: EdgeInsets.only(bottom: 12),
+                child: Text('Saved.'),
+              ),
             TextField(
               controller: _shiftLengthController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Shift length (minutes)'),
+              decoration: const InputDecoration(
+                labelText: 'Shift length (minutes)',
+              ),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _travelTimeController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Travel time between buildings (minutes)'),
+              decoration: const InputDecoration(
+                labelText: 'Travel time between buildings (minutes)',
+              ),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: _maxDailyController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Max daily hours (minutes)'),
+              decoration: const InputDecoration(
+                labelText: 'Max daily hours (minutes)',
+              ),
             ),
             const SizedBox(height: 16),
             FilledButton(
               onPressed: _saving ? null : _save,
               child: _saving
-                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Text('Save'),
             ),
           ],

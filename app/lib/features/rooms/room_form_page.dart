@@ -81,7 +81,9 @@ class _RoomFormPageState extends State<RoomFormPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(widget.existing == null ? 'New Room' : 'Edit Room')),
+      appBar: AppBar(
+        title: Text(widget.existing == null ? 'New Room' : 'Edit Room'),
+      ),
       body: AsyncLoader<(List<Building>, List<Tag>)>(
         load: () async {
           final buildings = await widget.api.listBuildings();
@@ -104,7 +106,9 @@ class _RoomFormPageState extends State<RoomFormPage> {
                 initialValue: _buildingId,
                 decoration: const InputDecoration(labelText: 'Building'),
                 items: buildings
-                    .map((b) => DropdownMenuItem(value: b.id, child: Text(b.name)))
+                    .map(
+                      (b) => DropdownMenuItem(value: b.id, child: Text(b.name)),
+                    )
                     .toList(),
                 onChanged: (value) => setState(() => _buildingId = value),
               ),
@@ -126,7 +130,11 @@ class _RoomFormPageState extends State<RoomFormPage> {
               FilledButton(
                 onPressed: _saving ? null : _save,
                 child: _saving
-                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : const Text('Save'),
               ),
             ],

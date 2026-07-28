@@ -12,7 +12,11 @@ class RolesPage extends StatelessWidget {
 
   const RolesPage({super.key, required this.api});
 
-  Future<void> _showForm(BuildContext context, VoidCallback reload, {Role? existing}) async {
+  Future<void> _showForm(
+    BuildContext context,
+    VoidCallback reload, {
+    Role? existing,
+  }) async {
     final controller = TextEditingController(text: existing?.name ?? '');
     String? error;
 
@@ -32,7 +36,12 @@ class RolesPage extends StatelessWidget {
               if (error != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 8),
-                  child: Text(error!, style: TextStyle(color: Theme.of(dialogContext).colorScheme.error)),
+                  child: Text(
+                    error!,
+                    style: TextStyle(
+                      color: Theme.of(dialogContext).colorScheme.error,
+                    ),
+                  ),
                 ),
             ],
           ),
@@ -54,7 +63,9 @@ class RolesPage extends StatelessWidget {
                   } else {
                     await api.updateRole(existing.id, name);
                   }
-                  if (dialogContext.mounted) Navigator.of(dialogContext).pop(true);
+                  if (dialogContext.mounted) {
+                    Navigator.of(dialogContext).pop(true);
+                  }
                 } on ApiException catch (e) {
                   setState(() => error = e.message);
                 }
@@ -68,16 +79,20 @@ class RolesPage extends StatelessWidget {
     if (saved == true) reload();
   }
 
-  Future<void> _delete(BuildContext context, Role role, VoidCallback reload) async {
+  Future<void> _delete(
+    BuildContext context,
+    Role role,
+    VoidCallback reload,
+  ) async {
     if (!await confirmDialog(context, 'Delete role "${role.name}"?')) return;
     try {
       await api.deleteRole(role.id);
       reload();
     } on ApiException catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Could not delete role: ${e.message}')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not delete role: ${e.message}')),
+        );
       }
     }
   }

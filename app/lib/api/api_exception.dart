@@ -15,7 +15,11 @@ class ApiException implements Exception {
       }
       if (detail is List) {
         final message = detail
-            .map((item) => item is Map && item['msg'] != null ? item['msg'].toString() : item.toString())
+            .map(
+              (item) => item is Map && item['msg'] != null
+                  ? item['msg'].toString()
+                  : item.toString(),
+            )
             .join('; ');
         return ApiException(statusCode, message);
       }

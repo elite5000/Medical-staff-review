@@ -8,7 +8,8 @@ import 'error_banner.dart';
 /// edit/delete) so the caller doesn't have to wire up its own FutureBuilder each time.
 class AsyncLoader<T> extends StatefulWidget {
   final Future<T> Function() load;
-  final Widget Function(BuildContext context, T data, VoidCallback reload) builder;
+  final Widget Function(BuildContext context, T data, VoidCallback reload)
+  builder;
 
   const AsyncLoader({super.key, required this.load, required this.builder});
 

@@ -9,7 +9,9 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
 void main() {
-  testWidgets('only the latest generation of a date range offers Regenerate', (tester) async {
+  testWidgets('only the latest generation of a date range offers Regenerate', (
+    tester,
+  ) async {
     final client = MockClient((request) async {
       if (request.url.path == '/rosters') {
         return http.Response(
@@ -36,7 +38,10 @@ void main() {
       }
       return http.Response('not found', 404);
     });
-    final api = ApiClient(ConnectionInfo(host: 'test', port: 1234), httpClient: client);
+    final api = ApiClient(
+      ConnectionInfo(host: 'test', port: 1234),
+      httpClient: client,
+    );
 
     await tester.pumpWidget(MaterialApp(home: RostersPage(api: api)));
     await tester.pumpAndSettle();
