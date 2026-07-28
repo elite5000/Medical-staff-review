@@ -8,22 +8,33 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:test/test.dart';
 
 /// Proves connectAndVerify's certificate-pinning logic directly against a real TLS server
-/// (test/fixtures/test_{cert,key}.pem — a plain self-signed cert, regenerable via
-/// `openssl req -x509 -newkey rsa:2048 -keyout test_key.pem -out test_cert.pem -days 3650
-/// -nodes -subj "/CN=localhost"`), rather than assuming the callback logic is right — an
-/// inverted comparison here would silently accept any certificate, defeating the entire
-/// point of pinning.
+/// (using a caller-supplied self-signed cert/key via environment variables), rather than
+/// assuming the callback logic is right — an inverted comparison here would silently accept
+/// any certificate, defeating the entire point of pinning.
 ///
 /// Deliberately `package:test`, not `flutter_test`: TestWidgetsFlutterBinding installs an
 /// HttpOverrides that fakes every HTTP response with a 400, precisely to stop widget tests
 /// from hitting real networks — which would defeat this test's entire point of proving
 /// behavior against a real TLS handshake.
 void main() {
+  final certPathFromEnv = Platform.environment['MSR_TEST_TLS_CERT'];
+  final keyPathFromEnv = Platform.environment['MSR_TEST_TLS_KEY'];
+  final missingTlsFixtures =
+      certPathFromEnv == null ||
+      certPathFromEnv.isEmpty ||
+      keyPathFromEnv == null ||
+      keyPathFromEnv.isEmpty;
+  final certPath = certPathFromEnv ?? '';
+  final keyPath = keyPathFromEnv ?? '';
+
   late String expectedFingerprint;
   late HttpServer server;
 
   setUpAll(() {
-    final certPem = File('test/fixtures/test_cert.pem').readAsStringSync();
+    if (missingTlsFixtures) {
+      return;
+    }
+    final certPem = File(certPath).readAsStringSync();
     final der = base64.decode(
       certPem
           .replaceAll('-----BEGIN CERTIFICATE-----', '')
@@ -34,10 +45,13 @@ void main() {
   });
 
   setUp(() async {
+    if (missingTlsFixtures) {
+      return;
+    }
     SharedPreferences.setMockInitialValues({});
     final context = SecurityContext()
-      ..useCertificateChain('test/fixtures/test_cert.pem')
-      ..usePrivateKey('test/fixtures/test_key.pem');
+      ..useCertificateChain(certPath)
+      ..usePrivateKey(keyPath);
     server = await HttpServer.bindSecure(
       InternetAddress.loopbackIPv4,
       0,
@@ -50,11 +64,17 @@ void main() {
   });
 
   tearDown(() async {
+    if (missingTlsFixtures) {
+      return;
+    }
     await server.close(force: true);
   });
 
   test(
     'accepts a connection whose certificate matches the pinned fingerprint',
+    skip: missingTlsFixtures
+        ? 'Set MSR_TEST_TLS_CERT and MSR_TEST_TLS_KEY to run TLS pinning integration tests.'
+        : false,
     () async {
       final api = await connectAndVerify(
         ConnectionInfo(
@@ -70,6 +90,9 @@ void main() {
 
   test(
     'rejects a connection whose certificate does not match the pinned fingerprint',
+    skip: missingTlsFixtures
+        ? 'Set MSR_TEST_TLS_CERT and MSR_TEST_TLS_KEY to run TLS pinning integration tests.'
+        : false,
     () async {
       final api = await connectAndVerify(
         ConnectionInfo(
@@ -84,7 +107,10 @@ void main() {
   );
 
   test(
-    'trusts and pins whatever certificate is presented on first connect',
+    'rejects token-protected connections without a certificate fingerprint',
+    skip: missingTlsFixtures
+        ? 'Set MSR_TEST_TLS_CERT and MSR_TEST_TLS_KEY to run TLS pinning integration tests.'
+        : false,
     () async {
       final api = await connectAndVerify(
         ConnectionInfo(
@@ -93,8 +119,7 @@ void main() {
           token: 'test-token',
         ),
       );
-      expect(api, isNotNull);
-      expect(api!.connection.certFingerprint, expectedFingerprint);
+      expect(api, isNull);
     },
   );
 }

@@ -19,9 +19,18 @@ backend_root = Path.cwd()
 # ".libs", dll)) rather than a normal import — PyInstaller's static analysis doesn't see
 # that, so the dot-prefixed .libs/ directory is silently dropped unless listed explicitly.
 ortools_libs_dir = backend_root / ".venv/Lib/site-packages/ortools/.libs"
+if not ortools_libs_dir.exists():
+    raise RuntimeError(
+        f"Expected OR-Tools native DLL directory not found: {ortools_libs_dir}. "
+        "Ensure dependencies are installed in backend/.venv before packaging."
+    )
 ortools_libs_datas = [
     (str(dll), "ortools/.libs") for dll in ortools_libs_dir.glob("*.dll")
 ]
+if not ortools_libs_datas:
+    raise RuntimeError(
+        f"No OR-Tools DLLs found under {ortools_libs_dir}; refusing to build a broken package."
+    )
 
 a = Analysis(
     [str(backend_root / "app/desktop/tray.py")],

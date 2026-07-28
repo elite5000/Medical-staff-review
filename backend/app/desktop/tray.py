@@ -13,7 +13,9 @@ from __future__ import annotations
 
 import json
 import ipaddress
+import http.client
 import socket
+import ssl
 import sys
 import threading
 import time
@@ -246,6 +248,24 @@ def _show_connection_window() -> None:
         window.clipboard_append(token)
 
     ttk.Button(window, text="Copy token", command=copy_token).pack(pady=(0, 16))
+
+    fingerprint = _cert_fingerprint(_ensure_certificate()[0])
+    ttk.Label(window, text="Certificate fingerprint (SHA-256)").pack(pady=(0, 4))
+    fingerprint_var = tk.StringVar(value=fingerprint)
+    fingerprint_entry = ttk.Entry(
+        window,
+        textvariable=fingerprint_var,
+        state="readonly",
+        width=70,
+        justify="center",
+    )
+    fingerprint_entry.pack(padx=16, pady=(0, 4))
+
+    def copy_fingerprint() -> None:
+        window.clipboard_clear()
+        window.clipboard_append(fingerprint)
+
+    ttk.Button(window, text="Copy fingerprint", command=copy_fingerprint).pack(pady=(0, 16))
     window.mainloop()
 
 
@@ -255,22 +275,64 @@ def _open_data_folder() -> None:
     os.startfile(get_data_dir())  # noqa: S606  (Windows-only build; this is explorer.exe)
 
 
-def _wait_for_server_ready(server_thread: threading.Thread, timeout_seconds: float = 8.0) -> bool:
-    """Waits for the local API socket to become reachable or for startup failure."""
+def _wait_for_server_ready(
+    server_thread: threading.Thread,
+    expected_fingerprint: str,
+    cert_path: Path,
+    timeout_seconds: float = 8.0,
+) -> bool:
+    """Waits for this app's HTTPS /health endpoint with the expected certificate."""
 
     deadline = time.monotonic() + timeout_seconds
+    ssl_context = ssl.create_default_context()
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_REQUIRED
+    ssl_context.load_verify_locations(cafile=str(cert_path))
+
     while time.monotonic() < deadline:
         if not server_thread.is_alive():
             return False
-        probe = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         try:
-            probe.settimeout(0.25)
-            if probe.connect_ex(("127.0.0.1", PORT)) == 0:
+            conn = http.client.HTTPSConnection(
+                "127.0.0.1",
+                PORT,
+                timeout=0.5,
+                context=ssl_context,
+            )
+            conn.request("GET", "/health")
+            response = conn.getresponse()
+            cert = conn.sock.getpeercert(binary_form=True)
+            body = response.read().decode("utf-8")
+            conn.close()
+
+            if response.status != 200:
+                time.sleep(0.1)
+                continue
+
+            if cert is None:
+                time.sleep(0.1)
+                continue
+
+            digest = hashes.Hash(hashes.SHA256())
+            digest.update(cert)
+            if digest.finalize().hex() != expected_fingerprint:
+                time.sleep(0.1)
+                continue
+            payload = json.loads(body)
+            if payload.get("status") == "ok":
                 return True
-        finally:
-            probe.close()
+        except (
+            OSError,
+            ssl.SSLError,
+            http.client.HTTPException,
+            json.JSONDecodeError,
+            ValueError,
+        ):
+            pass
+        if not server_thread.is_alive():
+            return False
         time.sleep(0.1)
-    return server_thread.is_alive()
+    return False
 
 
 def _show_startup_error(message: str) -> None:
@@ -287,7 +349,8 @@ def _show_startup_error(message: str) -> None:
 
 def main() -> None:
     _run_migrations()
-    _ensure_certificate()
+    cert_path, _ = _ensure_certificate()
+    expected_fingerprint = _cert_fingerprint(cert_path)
 
     startup_errors: list[str] = []
 
@@ -299,7 +362,7 @@ def main() -> None:
 
     server_thread = threading.Thread(target=serve_with_error_capture, daemon=True)
     server_thread.start()
-    if not _wait_for_server_ready(server_thread):
+    if not _wait_for_server_ready(server_thread, expected_fingerprint, cert_path):
         detail = startup_errors[0] if startup_errors else "The server did not become reachable."
         _show_startup_error(detail)
         return

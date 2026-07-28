@@ -53,10 +53,11 @@ class _RosterGeneratePageState extends State<RosterGeneratePage> {
         numDays: numDays,
       );
       if (!mounted) return;
+      final navigator = Navigator.of(context);
       // Replaces this page with the roster view, then reports back to RostersPage (via the
       // original push's Future) that a new roster was generated so its list refreshes.
-      Navigator.of(context).pop(true);
-      Navigator.of(context).push(
+      navigator.pop(true);
+      navigator.push(
         MaterialPageRoute(
           builder: (_) => RosterViewPage(api: widget.api, rosterId: roster.id),
         ),

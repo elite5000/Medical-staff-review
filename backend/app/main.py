@@ -21,7 +21,7 @@ async def require_pairing_token(
     that other devices on the same LAN can't use the API without first pairing via the tray
     app's QR code.
     """
-    if settings.pairing_token is not None and request.url.path != "/health":
+    if settings.pairing_token and request.url.path != "/health":
         if request.headers.get("authorization") != f"Bearer {settings.pairing_token}":
             return JSONResponse({"detail": "Invalid or missing pairing token"}, status_code=401)
     return await call_next(request)

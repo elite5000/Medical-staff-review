@@ -76,6 +76,7 @@ class TagsPage extends StatelessWidget {
         ),
       ),
     );
+    controller.dispose();
     if (saved == true) reload();
   }
 

@@ -76,6 +76,7 @@ class RolesPage extends StatelessWidget {
         ),
       ),
     );
+    controller.dispose();
     if (saved == true) reload();
   }
 

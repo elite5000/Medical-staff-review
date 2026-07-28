@@ -34,14 +34,16 @@ Future<ApiClient?> connectAndVerify(ConnectionInfo info) async {
     return api;
   }
 
-  String? capturedFingerprint;
+  // For packaged builds (token-enabled), manual pairing must include the certificate
+  // fingerprint out of band; otherwise the very first TLS connection would be TOFU and
+  // could leak the bearer token to an on-path attacker.
+  if (info.certFingerprint == null || info.certFingerprint!.isEmpty) {
+    return null;
+  }
+
   final probeIoHttpClient = HttpClient()
     ..badCertificateCallback = (cert, host, port) {
       final actual = sha256.convert(cert.der).toString();
-      if (info.certFingerprint == null) {
-        capturedFingerprint = actual;
-        return true;
-      }
       return actual == info.certFingerprint;
     };
 
@@ -53,18 +55,15 @@ Future<ApiClient?> connectAndVerify(ConnectionInfo info) async {
     probeClient.close();
   }
 
-  final resolvedFingerprint = info.certFingerprint ?? capturedFingerprint;
-  if (resolvedFingerprint == null) return null;
-
   final resolved = ConnectionInfo(
     host: info.host,
     port: info.port,
     token: info.token,
-    certFingerprint: resolvedFingerprint,
+    certFingerprint: info.certFingerprint,
   );
   await ConnectionStore.save(resolved);
   return ApiClient(
     resolved,
-    httpClient: IOClient(_pinnedHttpClient(resolvedFingerprint)),
+    httpClient: IOClient(_pinnedHttpClient(info.certFingerprint!)),
   );
 }

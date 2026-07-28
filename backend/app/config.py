@@ -23,7 +23,9 @@ def _default_pairing_token() -> str | None:
         return None
     token_path = get_data_dir() / "pairing_token.txt"
     if token_path.exists():
-        return token_path.read_text().strip()
+        persisted = token_path.read_text().strip()
+        if persisted:
+            return persisted
     token = secrets.token_urlsafe(32)
     token_path.write_text(token)
     return token

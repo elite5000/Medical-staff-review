@@ -22,6 +22,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
   late final TextEditingController _hostController;
   late final TextEditingController _portController;
   final TextEditingController _tokenController = TextEditingController();
+  final TextEditingController _fingerprintController = TextEditingController();
   bool _connecting = false;
   String? _error;
 
@@ -44,6 +45,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
     _hostController.dispose();
     _portController.dispose();
     _tokenController.dispose();
+    _fingerprintController.dispose();
     super.dispose();
   }
 
@@ -71,13 +73,21 @@ class _ConnectScreenState extends State<ConnectScreen> {
       setState(() => _error = 'Enter a valid host and port.');
       return;
     }
+    final token = _tokenController.text.trim();
+    final fingerprint = _fingerprintController.text.trim().toLowerCase();
+    if (token.isNotEmpty && !RegExp(r'^[0-9a-f]{64}$').hasMatch(fingerprint)) {
+      setState(
+        () => _error =
+            'Enter the 64-character certificate fingerprint from the tray app.',
+      );
+      return;
+    }
     await _connectWith(
       ConnectionInfo(
         host: _hostController.text.trim(),
         port: port,
-        token: _tokenController.text.trim().isEmpty
-            ? null
-            : _tokenController.text.trim(),
+        token: token.isEmpty ? null : token,
+        certFingerprint: fingerprint.isEmpty ? null : fingerprint,
       ),
     );
   }
@@ -149,6 +159,16 @@ class _ConnectScreenState extends State<ConnectScreen> {
                   controller: _tokenController,
                   decoration: const InputDecoration(labelText: 'Pairing token'),
                   obscureText: true,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _fingerprintController,
+                  decoration: const InputDecoration(
+                    labelText: 'Certificate fingerprint (SHA-256)',
+                    helperText: 'Shown in the backend tray connection window',
+                  ),
+                  autocorrect: false,
+                  enableSuggestions: false,
                 ),
                 if (_error != null) ...[
                   const SizedBox(height: 12),
