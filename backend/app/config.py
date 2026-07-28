@@ -35,7 +35,6 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="APP_")
 
     database_url: str = Field(default_factory=_default_database_url)
-    cors_origins: list[str] = ["http://localhost:5173"]
     pairing_token: str | None = Field(default_factory=_default_pairing_token)
 
 

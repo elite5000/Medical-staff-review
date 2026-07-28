@@ -7,9 +7,6 @@ import '../../widgets/async_loader.dart';
 import 'roster_generate_page.dart';
 import 'roster_view_page.dart';
 
-String _fmtDate(DateTime d) =>
-    '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-
 /// Every generation is retained permanently (see CONTEXT.md's Roster entry) — only the
 /// most recent generation for a given date range gets a "Regenerate" action; older
 /// generations for the same range are viewable read-only history.
@@ -77,7 +74,7 @@ class RostersPage extends StatelessWidget {
                   itemBuilder: (context, index) {
                     final roster = rosters[index];
                     return ListTile(
-                      title: Text('${_fmtDate(roster.startDate)} – ${_fmtDate(roster.endDate)}'),
+                      title: Text('${dateToJson(roster.startDate)} – ${dateToJson(roster.endDate)}'),
                       subtitle: Text(
                         'Generated ${roster.generatedAt} · '
                         'Violations: ${roster.hasViolations ? 'Yes' : 'No'}',

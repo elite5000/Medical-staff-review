@@ -52,6 +52,16 @@ the installer) was confirmed to: run Alembic migrations against
 successfully generate a roster via `POST /rosters` — i.e. the OR-Tools solver runs correctly
 inside the frozen build end-to-end.
 
+## Expected warnings on first run
+
+- **Windows Defender Firewall**: the tray app binds a port and will trigger the standard
+  one-time "allow this app" prompt (scoped to the Private network profile) the first time it
+  starts. Expected — the admin clicks "Allow".
+- **Windows SmartScreen**: `MedicalStaffReviewSetup.exe` is unsigned, so SmartScreen will
+  likely warn ("Windows protected your PC") the first time it's run. Expected too — the admin
+  clicks "More info" → "Run anyway". Code signing would remove this but is a separate, paid
+  step not worth doing until it becomes a real nuisance for the admin.
+
 ## Not yet verified (needs a real install, see the plan's Verification section)
 
 - Running `iscc` itself — Inno Setup isn't installed in this environment.

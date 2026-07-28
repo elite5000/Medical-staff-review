@@ -1,7 +1,6 @@
 from collections.abc import Awaitable, Callable
 
 from fastapi import FastAPI, Request, Response
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.config import settings
@@ -9,13 +8,6 @@ from app.routers import buildings, roles, rooms, rosters, rules, staff, tags
 from app.routers import settings as settings_router
 
 app = FastAPI(title="Medical Staff Review API")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=settings.cors_origins,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 
 @app.middleware("http")
@@ -47,5 +39,5 @@ app.include_router(rosters.router)
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    """Dependency-free liveness check — used by Playwright's webServer polling in e2e runs."""
+    """Dependency-free liveness check, exempt from the pairing-token gate above."""
     return {"status": "ok"}

@@ -172,7 +172,3 @@ class _RuleFormPageState extends State<RuleFormPage> {
     );
   }
 }
-
-extension _FirstOrNull<T> on List<T> {
-  T? get firstOrNull => isEmpty ? null : first;
-}

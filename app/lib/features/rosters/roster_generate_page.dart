@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../api/api_client.dart';
 import '../../api/api_exception.dart';
+import '../../api/models.dart';
 import '../../widgets/error_banner.dart';
 import 'roster_view_page.dart';
 
@@ -74,11 +75,7 @@ class _RosterGeneratePageState extends State<RosterGeneratePage> {
               );
               if (picked != null) setState(() => _startDate = picked);
             },
-            child: Text(
-              _startDate == null
-                  ? 'Start date'
-                  : '${_startDate!.year}-${_startDate!.month.toString().padLeft(2, '0')}-${_startDate!.day.toString().padLeft(2, '0')}',
-            ),
+            child: Text(_startDate == null ? 'Start date' : dateToJson(_startDate!)),
           ),
           const SizedBox(height: 16),
           TextField(

@@ -136,7 +136,3 @@ class _RoomFormPageState extends State<RoomFormPage> {
     );
   }
 }
-
-extension _FirstOrNull<T> on List<T> {
-  T? get firstOrNull => isEmpty ? null : first;
-}

@@ -69,7 +69,10 @@ def _run_migrations() -> None:
 def _serve() -> None:
     from app.main import app
 
-    uvicorn.run(app, host="0.0.0.0", port=PORT, log_level="warning")  # noqa: S104
+    # Binds only the detected LAN interface, not every interface (0.0.0.0) — a VPN or other
+    # virtual adapter shouldn't be able to reach this even though the pairing token would
+    # still reject it. _lan_ip() fails closed to 127.0.0.1 (loopback-only) if detection fails.
+    uvicorn.run(app, host=_lan_ip(), port=PORT, log_level="warning")
 
 
 def _tray_icon_image() -> Image.Image:

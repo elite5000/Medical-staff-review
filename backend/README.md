@@ -1,8 +1,8 @@
 # Backend
 
-FastAPI + SQLAlchemy + OR-Tools API. Serves the [Flutter app](../app) over HTTP — see the
-root of this repo for how the two fit together (backend runs on one Windows PC on the
-admin's LAN; the app is the client, on that same PC and/or phones/tablets).
+FastAPI + SQLAlchemy + OR-Tools API. Serves the [Flutter app](../app) over HTTP: this
+backend runs on one Windows PC on the admin's LAN, and the app is the client, on that same
+PC and/or phones/tablets.
 
 ## Development
 

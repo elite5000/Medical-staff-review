@@ -6,9 +6,6 @@ import '../../api/models.dart';
 import '../../widgets/async_loader.dart';
 import '../../widgets/error_banner.dart';
 
-String _fmtDate(DateTime d) =>
-    '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-
 typedef _RosterViewData = (RosterDetail, List<Room>, List<Staff>, List<Building>, List<Tag>, List<Roster>);
 
 /// Ported from frontend/src/pages/rosters/RosterViewPage.svelte.
@@ -71,14 +68,14 @@ class _RosterViewPageState extends State<RosterViewPage> {
   ) {
     if (v.violationType == ViolationType.roomUnfilled) {
       final room = v.roomId != null ? roomsById[v.roomId]?.name : null;
-      return '${room ?? 'Room'} unfilled on ${_fmtDate(v.date)} (shift ${v.shiftIndex})';
+      return '${room ?? 'Room'} unfilled on ${dateToJson(v.date)} (shift ${v.shiftIndex})';
     }
     final scope = v.buildingId != null
         ? 'Building: ${buildingsById[v.buildingId]?.name ?? '—'}'
         : v.tagId != null
         ? 'Tag: ${tagsById[v.tagId]?.name ?? '—'}'
         : '—';
-    return 'Minimum-count rule unmet for $scope on ${_fmtDate(v.date)} (shift ${v.shiftIndex}) — ${v.detail ?? ''}';
+    return 'Minimum-count rule unmet for $scope on ${dateToJson(v.date)} (shift ${v.shiftIndex}) — ${v.detail ?? ''}';
   }
 
   Future<void> _reassign(Shift shift, int staffId, VoidCallback reload) async {
@@ -112,7 +109,7 @@ class _RosterViewPageState extends State<RosterViewPage> {
             children: [
               ErrorBanner(message: _error),
               Text(
-                '${_fmtDate(roster.startDate)} – ${_fmtDate(roster.endDate)} (generated ${roster.generatedAt})',
+                '${dateToJson(roster.startDate)} – ${dateToJson(roster.endDate)} (generated ${roster.generatedAt})',
               ),
               if (roster.violations.isNotEmpty) ...[
                 const SizedBox(height: 16),
@@ -122,7 +119,7 @@ class _RosterViewPageState extends State<RosterViewPage> {
               ],
               for (final date in sortedDates) ...[
                 const SizedBox(height: 16),
-                Text(_fmtDate(date), style: Theme.of(context).textTheme.titleLarge),
+                Text(dateToJson(date), style: Theme.of(context).textTheme.titleLarge),
                 const SizedBox(height: 4),
                 for (final shift in shiftsByDate[date]!)
                   Card(

@@ -41,7 +41,3 @@ class _QrScanPageState extends State<QrScanPage> {
     );
   }
 }
-
-extension _FirstOrNull<T> on List<T> {
-  T? get firstOrNull => isEmpty ? null : first;
-}

@@ -144,9 +144,6 @@ class _StaffFormPageState extends State<StaffFormPage> {
     }
   }
 
-  String _fmtDate(DateTime d) =>
-      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -241,7 +238,7 @@ class _StaffFormPageState extends State<StaffFormPage> {
                 for (final u in _unavailabilities)
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: Text('${_fmtDate(u.startDate)} – ${_fmtDate(u.endDate)}'),
+                    title: Text('${dateToJson(u.startDate)} – ${dateToJson(u.endDate)}'),
                     subtitle: u.reason != null ? Text(u.reason!) : null,
                     trailing: IconButton(
                       icon: const Icon(Icons.delete_outline),
@@ -263,7 +260,7 @@ class _StaffFormPageState extends State<StaffFormPage> {
                           );
                           if (picked != null) setState(() => _uaStart = picked);
                         },
-                        child: Text(_uaStart == null ? 'Start date' : _fmtDate(_uaStart!)),
+                        child: Text(_uaStart == null ? 'Start date' : dateToJson(_uaStart!)),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -278,7 +275,7 @@ class _StaffFormPageState extends State<StaffFormPage> {
                           );
                           if (picked != null) setState(() => _uaEnd = picked);
                         },
-                        child: Text(_uaEnd == null ? 'End date' : _fmtDate(_uaEnd!)),
+                        child: Text(_uaEnd == null ? 'End date' : dateToJson(_uaEnd!)),
                       ),
                     ),
                   ],
