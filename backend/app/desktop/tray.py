@@ -348,9 +348,13 @@ def _show_startup_error(message: str) -> None:
 
 
 def main() -> None:
-    _run_migrations()
-    cert_path, _ = _ensure_certificate()
-    expected_fingerprint = _cert_fingerprint(cert_path)
+    try:
+        _run_migrations()
+        cert_path, _ = _ensure_certificate()
+        expected_fingerprint = _cert_fingerprint(cert_path)
+    except Exception as exc:  # pragma: no cover - startup path is integration-only
+        _show_startup_error(f"Database startup failed: {exc}")
+        return
 
     startup_errors: list[str] = []
 

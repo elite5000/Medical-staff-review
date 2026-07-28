@@ -46,10 +46,13 @@ class ApiClient {
   /// response exists — becomes an [ApiException] too. UI code only ever catches
   /// `on ApiException`, so without this a transport failure would escape those handlers
   /// entirely and leave in-progress state (e.g. a form's "saving" flag) stuck.
-  Future<dynamic> _send(Future<http.Response> Function() request) async {
+  Future<dynamic> _send(
+    Future<http.Response> Function() request, {
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
     final http.Response response;
     try {
-      response = await request().timeout(const Duration(seconds: 15));
+      response = await request().timeout(timeout);
     } on HandshakeException {
       // Thrown when connection_verifier.dart's badCertificateCallback rejects a pinned
       // cert that doesn't match — meaningfully different from "server unreachable": it
@@ -68,20 +71,33 @@ class ApiClient {
     return _decodeOrThrow(response);
   }
 
-  Future<dynamic> _get(String path) =>
-      _send(() => _http.get(_uri(path), headers: _headers));
-
-  Future<dynamic> _post(String path, [Object? body]) => _send(
-    () =>
-        _http.post(_uri(path), headers: _headers, body: jsonEncode(body ?? {})),
+  Future<dynamic> _get(String path, {Duration? timeout}) => _send(
+    () => _http.get(_uri(path), headers: _headers),
+    timeout: timeout ?? const Duration(seconds: 15),
   );
 
-  Future<dynamic> _patch(String path, Object body) => _send(
-    () => _http.patch(_uri(path), headers: _headers, body: jsonEncode(body)),
-  );
+  Future<dynamic> _post(String path, [Object? body, Duration? timeout]) =>
+      _send(
+        () => _http.post(
+          _uri(path),
+          headers: _headers,
+          body: jsonEncode(body ?? {}),
+        ),
+        timeout: timeout ?? const Duration(seconds: 15),
+      );
 
-  Future<void> _delete(String path) async {
-    await _send(() => _http.delete(_uri(path), headers: _headers));
+  Future<dynamic> _patch(String path, Object body, {Duration? timeout}) =>
+      _send(
+        () =>
+            _http.patch(_uri(path), headers: _headers, body: jsonEncode(body)),
+        timeout: timeout ?? const Duration(seconds: 15),
+      );
+
+  Future<void> _delete(String path, {Duration? timeout}) async {
+    await _send(
+      () => _http.delete(_uri(path), headers: _headers),
+      timeout: timeout ?? const Duration(seconds: 15),
+    );
   }
 
   /// True only if the server is reachable AND (in packaged builds) the pairing token is
@@ -301,14 +317,15 @@ class ApiClient {
     await _post('/rosters', {
       'start_date': dateToJson(startDate),
       'num_days': numDays,
-    }),
+    }, const Duration(seconds: 45)),
   );
 
   Future<RosterDetail> getRoster(int id) async =>
       RosterDetail.fromJson(await _get('/rosters/$id'));
 
-  Future<Roster> regenerateRoster(int id) async =>
-      Roster.fromJson(await _post('/rosters/$id/regenerate'));
+  Future<Roster> regenerateRoster(int id) async => Roster.fromJson(
+    await _post('/rosters/$id/regenerate', null, const Duration(seconds: 45)),
+  );
 
   Future<Shift> updateShift(
     int rosterId,
