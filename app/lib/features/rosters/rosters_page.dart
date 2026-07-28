@@ -23,14 +23,21 @@ Set<int> _latestIdsByRange(List<Roster> rosters) {
 }
 
 /// Ported from frontend/src/pages/rosters/RosterListPage.svelte.
-class RostersPage extends StatelessWidget {
+class RostersPage extends StatefulWidget {
   final ApiClient api;
 
   const RostersPage({super.key, required this.api});
 
+  @override
+  State<RostersPage> createState() => _RostersPageState();
+}
+
+class _RostersPageState extends State<RostersPage> {
+  int? _regeneratingRosterId;
+
   Future<void> _generate(BuildContext context, VoidCallback reload) async {
     final generated = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => RosterGeneratePage(api: api)),
+      MaterialPageRoute(builder: (_) => RosterGeneratePage(api: widget.api)),
     );
     if (generated == true) reload();
   }
@@ -38,7 +45,7 @@ class RostersPage extends StatelessWidget {
   Future<void> _view(BuildContext context, Roster roster) async {
     await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => RosterViewPage(api: api, rosterId: roster.id),
+        builder: (_) => RosterViewPage(api: widget.api, rosterId: roster.id),
       ),
     );
   }
@@ -48,8 +55,10 @@ class RostersPage extends StatelessWidget {
     Roster roster,
     VoidCallback reload,
   ) async {
+    if (_regeneratingRosterId != null) return;
+    setState(() => _regeneratingRosterId = roster.id);
     try {
-      await api.regenerateRoster(roster.id);
+      await widget.api.regenerateRoster(roster.id);
       reload();
     } on ApiException catch (e) {
       if (context.mounted) {
@@ -57,13 +66,17 @@ class RostersPage extends StatelessWidget {
           SnackBar(content: Text('Could not regenerate roster: ${e.message}')),
         );
       }
+    } finally {
+      if (mounted) {
+        setState(() => _regeneratingRosterId = null);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return AsyncLoader<List<Roster>>(
-      load: api.listRosters,
+      load: widget.api.listRosters,
       builder: (context, rosters, reload) {
         final latestIds = _latestIdsByRange(rosters);
         return Scaffold(
@@ -90,9 +103,18 @@ class RostersPage extends StatelessWidget {
                       onTap: () => _view(context, roster),
                       trailing: latestIds.contains(roster.id)
                           ? TextButton(
-                              onPressed: () =>
-                                  _regenerate(context, roster, reload),
-                              child: const Text('Regenerate'),
+                              onPressed: _regeneratingRosterId == null
+                                  ? () => _regenerate(context, roster, reload)
+                                  : null,
+                              child: _regeneratingRosterId == roster.id
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : const Text('Regenerate'),
                             )
                           : null,
                     );

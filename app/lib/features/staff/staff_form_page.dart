@@ -36,6 +36,7 @@ class _StaffFormPageState extends State<StaffFormPage> {
   DateTime? _uaEnd;
   String? _error;
   bool _saving = false;
+  bool _addingUnavailability = false;
   // Set by AsyncLoader's builder each time it runs, so _save() can trigger a refetch of
   // (roles, allStaff) after creating a member — without this, the newly created member is
   // absent from allStaff (fetched before they existed) and the calendar below has no entry
@@ -122,6 +123,8 @@ class _StaffFormPageState extends State<StaffFormPage> {
   Future<void> _addUnavailability() async {
     final staffId = _staffId;
     if (staffId == null || _uaStart == null || _uaEnd == null) return;
+    if (_addingUnavailability) return;
+    setState(() => _addingUnavailability = true);
     try {
       final created = await widget.api.addUnavailability(
         staffId,
@@ -139,6 +142,10 @@ class _StaffFormPageState extends State<StaffFormPage> {
       });
     } on ApiException catch (e) {
       setState(() => _error = e.message);
+    } finally {
+      if (mounted) {
+        setState(() => _addingUnavailability = false);
+      }
     }
   }
 
@@ -337,10 +344,19 @@ class _StaffFormPageState extends State<StaffFormPage> {
                 ),
                 const SizedBox(height: 8),
                 OutlinedButton(
-                  onPressed: _uaStart != null && _uaEnd != null
+                  onPressed:
+                      !_addingUnavailability &&
+                          _uaStart != null &&
+                          _uaEnd != null
                       ? _addUnavailability
                       : null,
-                  child: const Text('Add Unavailability'),
+                  child: _addingUnavailability
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('Add Unavailability'),
                 ),
               ],
             ],

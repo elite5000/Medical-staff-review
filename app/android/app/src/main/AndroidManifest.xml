@@ -7,7 +7,7 @@
          host/port is whatever the admin pairs with (see connect_screen.dart), so there's no
          fixed address to allowlist in advance. The pairing token is the real access gate. -->
     <application
-        android:label="app"
+        android:label="Medical Staff Review"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">
