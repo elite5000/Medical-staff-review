@@ -83,8 +83,14 @@ class BuildingsPage extends StatelessWidget {
                     ),
                   );
                   if (picked != null) {
+                    // 0 is never a valid closing time (closing must be strictly after
+                    // opening, and opening is always >= 0) — picking 00:00 can only mean
+                    // "closes at the end of the day", i.e. the backend's 1440, not 0.
+                    final pickedMinutes = picked.hour * 60 + picked.minute;
                     setState(
-                      () => closingMinutes = picked.hour * 60 + picked.minute,
+                      () => closingMinutes = pickedMinutes == 0
+                          ? 1440
+                          : pickedMinutes,
                     );
                   }
                 },

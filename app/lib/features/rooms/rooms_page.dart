@@ -46,36 +46,52 @@ class RoomsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AsyncLoader<List<Room>>(
-      load: api.listRooms,
-      builder: (context, rooms, reload) => Scaffold(
-        floatingActionButton: FloatingActionButton(
-          onPressed: () => _openForm(context, reload),
-          tooltip: 'New Room',
-          child: const Icon(Icons.add),
-        ),
-        body: rooms.isEmpty
-            ? const Center(child: Text('No rooms yet.'))
-            : ListView.separated(
-                itemCount: rooms.length,
-                separatorBuilder: (_, _) => const Divider(height: 1),
-                itemBuilder: (context, index) {
-                  final room = rooms[index];
-                  return ListTile(
-                    title: Text(room.name),
-                    subtitle: room.tags.isEmpty
-                        ? null
-                        : Text(room.tags.map((t) => t.name).join(', ')),
-                    onTap: () => _openForm(context, reload, existing: room),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline),
-                      tooltip: 'Delete',
-                      onPressed: () => _delete(context, room, reload),
-                    ),
-                  );
-                },
-              ),
-      ),
+    // Room names aren't unique across buildings (see RoomFormPage), so the building needs
+    // to be in this list too — otherwise same/similarly-named rooms in different buildings
+    // are indistinguishable without opening each one's edit form.
+    return AsyncLoader<(List<Room>, List<Building>)>(
+      load: () async {
+        final rooms = await api.listRooms();
+        final buildings = await api.listBuildings();
+        return (rooms, buildings);
+      },
+      builder: (context, data, reload) {
+        final (rooms, buildings) = data;
+        final buildingsById = {for (final b in buildings) b.id: b};
+        return Scaffold(
+          floatingActionButton: FloatingActionButton(
+            onPressed: () => _openForm(context, reload),
+            tooltip: 'New Room',
+            child: const Icon(Icons.add),
+          ),
+          body: rooms.isEmpty
+              ? const Center(child: Text('No rooms yet.'))
+              : ListView.separated(
+                  itemCount: rooms.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (context, index) {
+                    final room = rooms[index];
+                    final buildingName =
+                        buildingsById[room.buildingId]?.name ?? '—';
+                    final tagNames = room.tags.map((t) => t.name).join(', ');
+                    return ListTile(
+                      title: Text(room.name),
+                      subtitle: Text(
+                        tagNames.isEmpty
+                            ? buildingName
+                            : '$buildingName · $tagNames',
+                      ),
+                      onTap: () => _openForm(context, reload, existing: room),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline),
+                        tooltip: 'Delete',
+                        onPressed: () => _delete(context, room, reload),
+                      ),
+                    );
+                  },
+                ),
+        );
+      },
     );
   }
 }

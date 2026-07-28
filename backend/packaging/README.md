@@ -1,27 +1,39 @@
 # Packaging the desktop build
 
-Turns the backend into a single Windows installer that a non-technical admin can run once,
-after which the app starts automatically at every login with no terminal involved. See the
-"Backend changes" section of the migration plan for the full rationale.
+Turns the backend *and* the Windows Flutter client into a single installer that a
+non-technical admin can run once — after which the backend starts automatically at every
+login with no terminal involved, and the client is an ordinary Start Menu / Desktop app they
+open when they want to use it. See the migration plan's "Backend changes" section for the
+rationale, and the note below for why this is one installer covering both, not two.
 
 ## Build steps
 
-Run from `backend/`:
+Run from the repo root:
 
 ```
-uv run pyinstaller packaging/tray.spec
+cd backend && uv run pyinstaller packaging/tray.spec
+cd ../app && flutter build windows --release
 ```
 
-Produces `dist/MedicalStaffReview/` (onedir — not onefile, since OR-Tools' native DLLs and
-startup time are both much better behaved this way). Then, on a machine with
-[Inno Setup](https://jrsoftware.org/isinfo.php) installed:
+Produces `backend/dist/MedicalStaffReview/` (onedir — not onefile, since OR-Tools' native
+DLLs and startup time are both much better behaved this way) and
+`app/build/windows/x64/runner/Release/`. Then, on a machine with
+[Inno Setup](https://jrsoftware.org/isinfo.php) installed, from `backend/`:
 
 ```
 iscc packaging/installer.iss
 ```
 
-Produces `packaging/dist_installer/MedicalStaffReviewSetup.exe` — the file to hand to the
-admin.
+Produces `packaging/dist_installer/MedicalStaffReviewSetup.exe` — the one file to hand to
+the admin. It installs the backend to `{app}\backend` and the client to `{app}\client`
+(kept in separate subfolders since each is an independent build with its own DLLs and
+nothing guarantees their filenames never collide).
+
+**Why one installer, not two**: the backend only runs on Windows, but the Flutter app also
+targets macOS and Android — so a phone or Mac never needs `installer.iss` at all, while a
+Windows admin using their own PC for everything needs both the backend and a client. Before
+this, `installer.iss` only packaged the backend; the admin had no supported way to get the
+Windows client at all (caught in review — see git history on this file).
 
 ## Known gotchas (already handled in `tray.spec`, documented here so they aren't
 "fixed" again by accident)
@@ -64,7 +76,11 @@ inside the frozen build end-to-end.
 
 ## Not yet verified (needs a real install, see the plan's Verification section)
 
-- Running `iscc` itself — Inno Setup isn't installed in this environment.
+- Running `iscc` itself — Inno Setup isn't installed in this environment. Both `[Files]`
+  source paths in `installer.iss` were confirmed to resolve to real, current build output
+  (`backend/dist/MedicalStaffReview/MedicalStaffReview.exe` and
+  `app/build/windows/x64/runner/Release/app.exe` both exist), so `iscc` should have what it
+  needs — just not proven by actually compiling it.
 - Installing the compiled `MedicalStaffReviewSetup.exe` on a clean machine/user account:
   Startup-folder autostart actually firing after a real login, the tray icon and its "Show
   connection QR" / "Open data folder" / "Quit" menu items, and the first-run Windows
