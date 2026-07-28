@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
@@ -49,6 +50,15 @@ class ApiClient {
     final http.Response response;
     try {
       response = await request().timeout(const Duration(seconds: 15));
+    } on HandshakeException {
+      // Thrown when connection_verifier.dart's badCertificateCallback rejects a pinned
+      // cert that doesn't match — meaningfully different from "server unreachable": it
+      // means the backend's certificate changed (e.g. reinstalled), not that it's down.
+      throw ApiException(
+        0,
+        "Certificate mismatch — the backend may have been reinstalled. "
+        'Disconnect and re-pair from Settings.',
+      );
     } catch (_) {
       throw ApiException(
         0,

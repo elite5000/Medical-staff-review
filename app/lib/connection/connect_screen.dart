@@ -3,14 +3,14 @@ import 'package:flutter/material.dart';
 
 import '../api/api_client.dart';
 import 'connection_info.dart';
-import 'connection_store.dart';
+import 'connection_verifier.dart';
 import 'qr_scan_page.dart';
 
 /// First-run (and re-pairing) screen: connects this device to the backend running on the
 /// admin's Windows PC. Mobile builds get a QR-scan shortcut; every platform can fall back to
 /// typing the host/port/token shown by the tray app's "Show connection QR" window.
 class ConnectScreen extends StatefulWidget {
-  final void Function(ConnectionInfo) onConnected;
+  final void Function(ApiClient) onConnected;
 
   const ConnectScreen({super.key, required this.onConnected});
 
@@ -52,9 +52,9 @@ class _ConnectScreenState extends State<ConnectScreen> {
       _connecting = true;
       _error = null;
     });
-    final reachable = await ApiClient(info).verifyConnection();
+    final api = await connectAndVerify(info);
     if (!mounted) return;
-    if (!reachable) {
+    if (api == null) {
       setState(() {
         _connecting = false;
         _error =
@@ -62,8 +62,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
       });
       return;
     }
-    await ConnectionStore.save(info);
-    widget.onConnected(info);
+    widget.onConnected(api);
   }
 
   Future<void> _connectManually() async {

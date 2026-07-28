@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'api/api_client.dart';
 import 'app_shell.dart';
 import 'connection/connect_screen.dart';
-import 'connection/connection_info.dart';
 import 'connection/connection_store.dart';
+import 'connection/connection_verifier.dart';
 
 void main() {
   runApp(const MedicalStaffReviewApp());
@@ -51,17 +51,16 @@ class _RootPageState extends State<_RootPage> {
       setState(() => _loading = false);
       return;
     }
-    final api = ApiClient(stored);
-    final reachable = await api.verifyConnection();
+    final api = await connectAndVerify(stored);
     if (!mounted) return;
     setState(() {
-      _api = reachable ? api : null;
+      _api = api;
       _loading = false;
     });
   }
 
-  void _onConnected(ConnectionInfo info) {
-    setState(() => _api = ApiClient(info));
+  void _onConnected(ApiClient api) {
+    setState(() => _api = api);
   }
 
   Future<void> _disconnect() async {

@@ -26,6 +26,32 @@ flutter test integration_test -d windows            # full flow against a REAL b
                                                       # start one first, see backend/README.md
 ```
 
+## Android release signing
+
+`flutter build apk --release`/`--appbundle` sign with `android/app/upload-keystore.jks` if
+`android/key.properties` exists (both gitignored — never commit them), falling back to the
+debug key otherwise. **A keystore has already been generated on this machine** — back up
+`android/app/upload-keystore.jks` and `android/key.properties` somewhere safe (a password
+manager, an encrypted drive) before this working copy is deleted. Without that exact
+keystore, Android refuses to install a future release build as an update over an existing
+install — the app would have to be uninstalled first, losing local state.
+
+To generate a new one elsewhere instead (e.g. on a teammate's machine):
+
+```
+keytool -genkey -v -keystore android/app/upload-keystore.jks -keyalg RSA -keysize 2048 \
+  -validity 10000 -alias upload
+```
+
+Then create `android/key.properties`:
+
+```
+storePassword=<password you set above>
+keyPassword=<same password — PKCS12 keystores require store and key passwords to match>
+keyAlias=upload
+storeFile=upload-keystore.jks
+```
+
 ## Architecture notes
 
 - `lib/api/` — hand-written typed HTTP client + models mirroring `backend/app/schemas/*.py`
