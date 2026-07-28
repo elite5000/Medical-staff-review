@@ -1,8 +1,9 @@
 # App
 
 Flutter client for the [backend](../backend) API — targets Windows and macOS desktop plus
-iOS and Android. There's no bundled server: this app is always a client, pairing with a
-backend instance already running on the admin's Windows PC (see the tray app's "Show
+Android. (iOS is not a supported target — building/testing it needs a Mac with Xcode, which
+isn't available here.) There's no bundled server: this app is always a client, pairing with
+a backend instance already running on the admin's Windows PC (see the tray app's "Show
 connection QR" menu item, or type the host/port/token shown there manually).
 
 ## Development

@@ -1,3 +1,6 @@
+# IDEs
+.idea/
+
 # Python backend
 backend/.venv
 backend/__pycache__/

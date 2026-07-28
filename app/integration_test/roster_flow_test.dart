@@ -1,4 +1,5 @@
 import 'package:app/main.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -9,9 +10,10 @@ import 'package:integration_test/integration_test.dart';
 /// is suffixed so this is safe to run against a shared backend without colliding with other
 /// data.
 ///
-/// Requires a backend already running on 127.0.0.1:8000 with no pairing token configured
-/// (dev mode — see backend/app/config.py). See app/README or the migration plan's
-/// Verification section for how to start one against a throwaway DB.
+/// Requires a backend already running on port 8000 (bound to 0.0.0.0 if targeting an
+/// emulator, not just 127.0.0.1) with no pairing token configured (dev mode — see
+/// backend/app/config.py). See app/README or the migration plan's Verification section for
+/// how to start one against a throwaway DB.
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -34,7 +36,10 @@ void main() {
     // only drive the connect form if it's actually showing.
     final hostField = find.widgetWithText(TextField, 'Host / IP address');
     if (hostField.evaluate().isNotEmpty) {
-      await tester.enterText(hostField, '127.0.0.1');
+      // Android emulators can't reach the host machine via 127.0.0.1 — 10.0.2.2 is the
+      // special alias the emulator maps back to the host's loopback interface.
+      final backendHost = defaultTargetPlatform == TargetPlatform.android ? '10.0.2.2' : '127.0.0.1';
+      await tester.enterText(hostField, backendHost);
       await tester.enterText(find.widgetWithText(TextField, 'Port'), '8000');
       await tester.tap(find.widgetWithText(FilledButton, 'Connect'));
       await tester.pumpAndSettle();

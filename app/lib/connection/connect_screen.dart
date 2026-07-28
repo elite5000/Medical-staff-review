@@ -25,8 +25,8 @@ class _ConnectScreenState extends State<ConnectScreen> {
   bool _connecting = false;
   String? _error;
 
-  bool get _isMobile =>
-      defaultTargetPlatform == TargetPlatform.android || defaultTargetPlatform == TargetPlatform.iOS;
+  // iOS isn't a supported target (no Mac/Xcode available to build or test it — see app/README.md).
+  bool get _isMobile => defaultTargetPlatform == TargetPlatform.android;
 
   @override
   void initState() {
