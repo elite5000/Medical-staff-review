@@ -11,9 +11,9 @@ Verification section).
 
 from __future__ import annotations
 
-import json
-import ipaddress
 import http.client
+import ipaddress
+import json
 import socket
 import ssl
 import sys
