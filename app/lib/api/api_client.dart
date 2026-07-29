@@ -214,6 +214,16 @@ class ApiClient {
 
   Future<void> deleteTag(int id) => _delete('/tags/$id');
 
+  /// Attaches [tagId] to every room in [roomIds] in one request, *additively* — each room
+  /// keeps the tags it already had (unlike [updateRoom], whose `tagIds` full-replaces them).
+  /// Rooms that already carry the tag are left as-is rather than erroring. Returns the
+  /// affected rooms with their updated tag lists.
+  Future<List<Room>> applyTagToRooms(int tagId, List<int> roomIds) async =>
+      ((await _post('/tags/$tagId/apply-to-rooms', {'room_ids': roomIds}))
+              as List)
+          .map((j) => Room.fromJson(j))
+          .toList();
+
   // --- Roles ---
 
   Future<List<Role>> listRoles() async =>

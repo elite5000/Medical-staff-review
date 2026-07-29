@@ -6,12 +6,23 @@ import '../../api/models.dart';
 import '../../widgets/async_loader.dart';
 import '../../widgets/bulk_add_dialog.dart';
 import '../../widgets/confirm_dialog.dart';
+import 'bulk_apply_tag_page.dart';
 
 /// Ported from frontend/src/pages/tags/{TagsListPage,TagFormPage}.svelte.
 class TagsPage extends StatelessWidget {
   final ApiClient api;
 
   const TagsPage({super.key, required this.api});
+
+  Future<void> _openBulkApply(BuildContext context, VoidCallback reload) async {
+    await Navigator.of(
+      context,
+    ).push<void>(MaterialPageRoute(builder: (_) => BulkApplyTagPage(api: api)));
+    // Bulk-apply only ever edits rooms' tags, never the tags themselves, so this list can't
+    // have gone stale — but the page can create nothing and delete nothing, so reloading is
+    // free insurance and matches how every other sub-page return is handled here.
+    reload();
+  }
 
   Future<void> _showForm(
     BuildContext context,
@@ -60,23 +71,30 @@ class TagsPage extends StatelessWidget {
     return AsyncLoader<List<Tag>>(
       load: api.listTags,
       builder: (context, tags, reload) => Scaffold(
-        // These list pages have no AppBar of their own (AppShell owns the only one, and
-        // only at phone widths), so bulk-add sits as a small FAB above the single-add one
-        // rather than as an app bar action.
+        // Deliberately extra FABs rather than an AppBar action: no list page in this app
+        // owns an AppBar (AppShell supplies one only at phone widths, and none at all on
+        // desktop widths), so adding one here would stack two bars on phones. Distinct
+        // heroTags are required once a route has more than one FAB.
         floatingActionButton: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             FloatingActionButton.small(
-              // Two FABs in one Scaffold otherwise share FloatingActionButton's default
-              // hero tag and trip Flutter's duplicate-hero assertion on route transitions.
-              heroTag: null,
+              heroTag: 'tags-apply-to-rooms',
+              onPressed: () => _openBulkApply(context, reload),
+              tooltip: 'Apply to rooms',
+              child: const Icon(Icons.playlist_add_check),
+            ),
+            const SizedBox(height: 12),
+            FloatingActionButton.small(
+              heroTag: 'tags-bulk-add',
               onPressed: () => _showBulkForm(context, reload),
               tooltip: 'Bulk Add Tags',
               child: const Icon(Icons.playlist_add),
             ),
             const SizedBox(height: 12),
             FloatingActionButton(
+              heroTag: 'tags-new',
               onPressed: () => _showForm(context, reload),
               tooltip: 'New Tag',
               child: const Icon(Icons.add),
