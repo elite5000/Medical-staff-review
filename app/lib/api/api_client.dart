@@ -168,6 +168,16 @@ class ApiClient {
     }),
   );
 
+  /// Creates one Room per name, all under [buildingId] — the paste-a-batch counterpart to
+  /// [createRoom] (see BulkAddDialog). Room names aren't unique, so nothing is skipped.
+  Future<BulkAddResult<Room>> bulkCreateRooms({
+    required int buildingId,
+    required List<String> names,
+  }) async => BulkAddResult.fromJson(
+    await _post('/rooms/bulk', {'building_id': buildingId, 'names': names}),
+    Room.fromJson,
+  );
+
   Future<Room> updateRoom(
     int id, {
     String? name,
@@ -191,6 +201,14 @@ class ApiClient {
   Future<Tag> createTag(String name) async =>
       Tag.fromJson(await _post('/tags', {'name': name}));
 
+  /// Tag names are unique, so the result's `skipped` lists any pasted names the practice
+  /// already had — those aren't an error, just reported back for the summary.
+  Future<BulkAddResult<Tag>> bulkCreateTags(List<String> names) async =>
+      BulkAddResult.fromJson(
+        await _post('/tags/bulk', {'names': names}),
+        Tag.fromJson,
+      );
+
   Future<Tag> updateTag(int id, String name) async =>
       Tag.fromJson(await _patch('/tags/$id', {'name': name}));
 
@@ -203,6 +221,13 @@ class ApiClient {
 
   Future<Role> createRole(String name) async =>
       Role.fromJson(await _post('/roles', {'name': name}));
+
+  /// Role names are unique — see [bulkCreateTags] on the result's `skipped` list.
+  Future<BulkAddResult<Role>> bulkCreateRoles(List<String> names) async =>
+      BulkAddResult.fromJson(
+        await _post('/roles/bulk', {'names': names}),
+        Role.fromJson,
+      );
 
   Future<Role> updateRole(int id, String name) async =>
       Role.fromJson(await _patch('/roles/$id', {'name': name}));
@@ -227,6 +252,15 @@ class ApiClient {
       'preferred_days': preferredDays.map((d) => d.toJson()).toList(),
     }),
   );
+
+  /// Creates one active Staff member per name, with no roles and no preferred days — those
+  /// are set afterwards per person via [updateStaff]. Staff names aren't unique, so nothing
+  /// is skipped.
+  Future<BulkAddResult<Staff>> bulkCreateStaff(List<String> names) async =>
+      BulkAddResult.fromJson(
+        await _post('/staff/bulk', {'names': names}),
+        Staff.fromJson,
+      );
 
   Future<Staff> updateStaff(
     int id, {

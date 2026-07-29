@@ -4,6 +4,7 @@ import '../../api/api_client.dart';
 import '../../api/api_exception.dart';
 import '../../api/models.dart';
 import '../../widgets/async_loader.dart';
+import '../../widgets/bulk_add_dialog.dart';
 import '../../widgets/confirm_dialog.dart';
 
 /// Ported from frontend/src/pages/roles/{RolesListPage,RoleFormPage}.svelte.
@@ -80,6 +81,18 @@ class RolesPage extends StatelessWidget {
     if (saved == true) reload();
   }
 
+  Future<void> _showBulkForm(BuildContext context, VoidCallback reload) async {
+    final created = await showBulkAddDialog(
+      context: context,
+      title: 'Bulk Add Roles',
+      entityLabel: 'role',
+      entityLabelPlural: 'roles',
+      skipsExistingNames: true,
+      submit: (names, _) => api.bulkCreateRoles(names),
+    );
+    if (created) reload();
+  }
+
   Future<void> _delete(
     BuildContext context,
     Role role,
@@ -103,10 +116,28 @@ class RolesPage extends StatelessWidget {
     return AsyncLoader<List<Role>>(
       load: api.listRoles,
       builder: (context, roles, reload) => Scaffold(
-        floatingActionButton: FloatingActionButton(
-          onPressed: () => _showForm(context, reload),
-          tooltip: 'New Role',
-          child: const Icon(Icons.add),
+        // These list pages have no AppBar of their own (AppShell owns the only one, and
+        // only at phone widths), so bulk-add sits as a small FAB above the single-add one
+        // rather than as an app bar action.
+        floatingActionButton: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            FloatingActionButton.small(
+              // Two FABs in one Scaffold otherwise share FloatingActionButton's default
+              // hero tag and trip Flutter's duplicate-hero assertion on route transitions.
+              heroTag: null,
+              onPressed: () => _showBulkForm(context, reload),
+              tooltip: 'Bulk Add Roles',
+              child: const Icon(Icons.playlist_add),
+            ),
+            const SizedBox(height: 12),
+            FloatingActionButton(
+              onPressed: () => _showForm(context, reload),
+              tooltip: 'New Role',
+              child: const Icon(Icons.add),
+            ),
+          ],
         ),
         body: roles.isEmpty
             ? const Center(child: Text('No roles yet.'))

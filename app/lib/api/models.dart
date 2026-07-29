@@ -143,6 +143,27 @@ class Staff {
   );
 }
 
+/// Result of a `POST .../bulk` create (mirrors backend/app/schemas/bulk.py's
+/// BulkCreateResult). [skipped] only ever has entries for Tags and Roles — the entities
+/// whose name column is UNIQUE, where a pasted name that already exists is reported back
+/// instead of failing the whole batch. It stays empty for Rooms and Staff.
+class BulkAddResult<T> {
+  final List<T> created;
+  final List<String> skipped;
+
+  BulkAddResult({required this.created, required this.skipped});
+
+  factory BulkAddResult.fromJson(
+    Map<String, dynamic> json,
+    T Function(Map<String, dynamic>) itemFromJson,
+  ) => BulkAddResult(
+    created: (json['created'] as List)
+        .map((item) => itemFromJson(item as Map<String, dynamic>))
+        .toList(),
+    skipped: (json['skipped'] as List).cast<String>(),
+  );
+}
+
 enum RuleType {
   minimumCount('minimum_count'),
   eligibilityRestriction('eligibility_restriction');
