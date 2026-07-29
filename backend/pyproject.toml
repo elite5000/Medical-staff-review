@@ -50,7 +50,7 @@ python_version = "3.13"
 strict = true
 disallow_untyped_defs = true
 plugins = ["pydantic.mypy"]
-exclude = ["migrations/versions"]
+exclude = ["migrations/versions", "^dist/"]
 
 [[tool.mypy.overrides]]
 # No stubs/py.typed marker published for pystray.
