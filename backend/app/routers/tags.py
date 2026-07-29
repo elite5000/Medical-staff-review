@@ -3,7 +3,8 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.schemas.bulk import BulkCreateResult, NameListCreate
-from app.schemas.tag import TagCreate, TagRead, TagUpdate
+from app.schemas.room import RoomRead
+from app.schemas.tag import TagApplyToRooms, TagCreate, TagRead, TagUpdate
 from app.services import tag_service
 
 router = APIRouter(prefix="/tags", tags=["tags"])
@@ -40,3 +41,16 @@ def update_tag(tag_id: int, data: TagUpdate, db: Session = Depends(get_db)) -> T
 @router.delete("/{tag_id}", status_code=204)
 def delete_tag(tag_id: int, db: Session = Depends(get_db)) -> None:
     tag_service.delete_tag(db, tag_id)
+
+
+@router.post("/{tag_id}/apply-to-rooms", response_model=list[RoomRead])
+def apply_tag_to_rooms(
+    tag_id: int, data: TagApplyToRooms, db: Session = Depends(get_db)
+) -> list[RoomRead]:
+    """Bulk-attach this Tag to the given Rooms, additively (existing tags are kept).
+
+    Returns the affected Rooms with their full, updated tag lists so the caller can refresh
+    tag chips in place without a separate /rooms refetch.
+    """
+    rooms = tag_service.apply_tag_to_rooms(db, tag_id, data.room_ids)
+    return [RoomRead.model_validate(r) for r in rooms]
