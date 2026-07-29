@@ -82,3 +82,96 @@ def test_bulk_create_roles_empty_list(client: TestClient) -> None:
     assert response.status_code == 201
     assert response.json() == {"created": [], "skipped": []}
     assert client.get("/roles").json() == []
+
+
+def _create_staff(
+    client: TestClient, name: str, role_ids: list[object] | None = None
+) -> dict[str, object]:
+    response = client.post("/staff", json={"name": name, "role_ids": role_ids or []})
+    assert response.status_code == 201
+    return cast(dict[str, object], response.json())
+
+
+def _role_names(staff: dict[str, object]) -> list[str]:
+    return sorted(r["name"] for r in cast(list[dict[str, str]], staff["roles"]))
+
+
+def test_apply_role_to_staff_is_additive(client: TestClient) -> None:
+    """The role is added to everyone selected without disturbing roles they already hold."""
+    senior = _create_role(client, "Senior Fellow")
+    nurse = _create_role(client, "Nurse Practitioner")
+    alice = _create_staff(client, "Dr. Alice", [nurse["id"]])
+    bob = _create_staff(client, "Dr. Bob")
+    carol = _create_staff(client, "Dr. Carol")  # not selected — must be left alone
+
+    response = client.post(
+        f"/roles/{senior['id']}/apply-to-staff",
+        json={"staff_ids": [alice["id"], bob["id"]]},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert [s["name"] for s in body] == ["Dr. Alice", "Dr. Bob"]
+    assert _role_names(body[0]) == ["Nurse Practitioner", "Senior Fellow"]
+    assert _role_names(body[1]) == ["Senior Fellow"]
+    # Full StaffRead shape, not a trimmed one — the client swaps these straight into its list.
+    assert body[0]["preferred_days"] == []
+    assert body[0]["unavailabilities"] == []
+
+    assert _role_names(client.get(f"/staff/{alice['id']}").json()) == [
+        "Nurse Practitioner",
+        "Senior Fellow",
+    ]
+    assert _role_names(client.get(f"/staff/{carol['id']}").json()) == []
+
+
+def test_apply_role_to_staff_is_idempotent(client: TestClient) -> None:
+    """Reapplying to someone who already holds the role is a no-op for them, not an error."""
+    role = _create_role(client)
+    alice = _create_staff(client, "Dr. Alice", [role["id"]])
+    bob = _create_staff(client, "Dr. Bob")
+
+    response = client.post(
+        f"/roles/{role['id']}/apply-to-staff",
+        json={"staff_ids": [alice["id"], bob["id"]]},
+    )
+    assert response.status_code == 200
+    assert [_role_names(s) for s in response.json()] == [["Senior Fellow"], ["Senior Fellow"]]
+
+    # And a second identical apply still changes nothing — no duplicate staff_roles rows.
+    repeat = client.post(
+        f"/roles/{role['id']}/apply-to-staff",
+        json={"staff_ids": [alice["id"], bob["id"]]},
+    )
+    assert repeat.status_code == 200
+    assert [_role_names(s) for s in repeat.json()] == [["Senior Fellow"], ["Senior Fellow"]]
+
+
+def test_apply_unknown_role_to_staff_404s(client: TestClient) -> None:
+    alice = _create_staff(client, "Dr. Alice")
+    response = client.post("/roles/999/apply-to-staff", json={"staff_ids": [alice["id"]]})
+    assert response.status_code == 404
+
+
+def test_apply_role_to_unknown_staff_422s_and_applies_nothing(client: TestClient) -> None:
+    role = _create_role(client)
+    alice = _create_staff(client, "Dr. Alice")
+
+    response = client.post(
+        f"/roles/{role['id']}/apply-to-staff",
+        json={"staff_ids": [alice["id"], 999]},
+    )
+    assert response.status_code == 422
+    assert "999" in str(response.json()["detail"])
+    # Rejected wholesale: the known id in the same request must not have been applied either.
+    assert _role_names(client.get(f"/staff/{alice['id']}").json()) == []
+
+
+def test_apply_role_to_empty_staff_list_is_a_no_op(client: TestClient) -> None:
+    role = _create_role(client)
+    _create_staff(client, "Dr. Alice")
+
+    response = client.post(f"/roles/{role['id']}/apply-to-staff", json={"staff_ids": []})
+    assert response.status_code == 200
+    assert response.json() == []
+    # Still deletable, i.e. no staff picked the role up.
+    assert client.delete(f"/roles/{role['id']}").status_code == 204

@@ -3,8 +3,9 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.schemas.bulk import BulkCreateResult, NameListCreate
-from app.schemas.role import RoleCreate, RoleRead, RoleUpdate
-from app.services import role_service
+from app.schemas.role import RoleApplyToStaff, RoleCreate, RoleRead, RoleUpdate
+from app.schemas.staff import StaffRead
+from app.services import role_service, staff_service
 
 router = APIRouter(prefix="/roles", tags=["roles"])
 
@@ -40,3 +41,13 @@ def update_role(role_id: int, data: RoleUpdate, db: Session = Depends(get_db)) -
 @router.delete("/{role_id}", status_code=204)
 def delete_role(role_id: int, db: Session = Depends(get_db)) -> None:
     role_service.delete_role(db, role_id)
+
+
+@router.post("/{role_id}/apply-to-staff", response_model=list[StaffRead])
+def apply_role_to_staff(
+    role_id: int, data: RoleApplyToStaff, db: Session = Depends(get_db)
+) -> list[StaffRead]:
+    # staff_to_read (rather than StaffRead.model_validate) because StaffRead represents
+    # preferred_days as {week, day_of_week} pairs, not the ORM's PreferredDay rows.
+    updated = role_service.apply_role_to_staff(db, role_id, data.staff_ids)
+    return [staff_service.staff_to_read(s) for s in updated]
