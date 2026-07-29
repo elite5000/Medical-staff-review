@@ -244,6 +244,15 @@ class ApiClient {
 
   Future<void> deleteRole(int id) => _delete('/roles/$id');
 
+  /// Grants one role to many staff at once, additively — staff keep every role they already
+  /// hold, and staff who already hold this one are unaffected. Returns the updated staff so
+  /// the caller can refresh their role chips.
+  Future<List<Staff>> applyRoleToStaff(int roleId, List<int> staffIds) async =>
+      ((await _post('/roles/$roleId/apply-to-staff', {'staff_ids': staffIds}))
+              as List)
+          .map((j) => Staff.fromJson(j))
+          .toList();
+
   // --- Staff ---
 
   Future<List<Staff>> listStaff() async =>

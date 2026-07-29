@@ -6,6 +6,7 @@ import '../../api/models.dart';
 import '../../widgets/async_loader.dart';
 import '../../widgets/bulk_add_dialog.dart';
 import '../../widgets/confirm_dialog.dart';
+import 'bulk_apply_role_page.dart';
 
 /// Ported from frontend/src/pages/roles/{RolesListPage,RoleFormPage}.svelte.
 class RolesPage extends StatelessWidget {
@@ -93,6 +94,14 @@ class RolesPage extends StatelessWidget {
     if (created) reload();
   }
 
+  /// No reload on return: the bulk-apply page only edits which staff hold which roles, so
+  /// the role list this page shows is unaffected by anything done in there.
+  void _openBulkApply(BuildContext context) {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute(builder: (_) => BulkApplyRolePage(api: api)),
+    );
+  }
+
   Future<void> _delete(
     BuildContext context,
     Role role,
@@ -116,23 +125,30 @@ class RolesPage extends StatelessWidget {
     return AsyncLoader<List<Role>>(
       load: api.listRoles,
       builder: (context, roles, reload) => Scaffold(
-        // These list pages have no AppBar of their own (AppShell owns the only one, and
-        // only at phone widths), so bulk-add sits as a small FAB above the single-add one
-        // rather than as an app bar action.
+        // A FAB group rather than app bar actions: list pages here are hosted inside
+        // AppShell, which owns the app bar (and only renders one at phone widths), so a
+        // page-level action has nowhere to live up there. Explicit heroTags because multiple
+        // FABs on one Scaffold otherwise collide on the default tag.
         floatingActionButton: Column(
+          mainAxisAlignment: MainAxisAlignment.end,
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             FloatingActionButton.small(
-              // Two FABs in one Scaffold otherwise share FloatingActionButton's default
-              // hero tag and trip Flutter's duplicate-hero assertion on route transitions.
-              heroTag: null,
+              heroTag: 'applyRoleToStaff',
+              onPressed: () => _openBulkApply(context),
+              tooltip: 'Apply to staff',
+              child: const Icon(Icons.group_add),
+            ),
+            const SizedBox(height: 12),
+            FloatingActionButton.small(
+              heroTag: 'bulkAddRoles',
               onPressed: () => _showBulkForm(context, reload),
               tooltip: 'Bulk Add Roles',
               child: const Icon(Icons.playlist_add),
             ),
             const SizedBox(height: 12),
             FloatingActionButton(
+              heroTag: 'newRole',
               onPressed: () => _showForm(context, reload),
               tooltip: 'New Role',
               child: const Icon(Icons.add),
