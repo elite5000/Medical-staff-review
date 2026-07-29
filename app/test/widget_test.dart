@@ -26,7 +26,11 @@ void main() {
       find.widgetWithText(TextField, 'Host / IP address'),
       '',
     );
-    await tester.tap(find.widgetWithText(FilledButton, 'Connect'));
+    // The form sits in a SingleChildScrollView taller than the default test viewport, so the
+    // Connect button starts off-screen — scroll it into view before tapping.
+    final connectButton = find.widgetWithText(FilledButton, 'Connect');
+    await tester.ensureVisible(connectButton);
+    await tester.tap(connectButton);
     await tester.pump();
 
     expect(find.text('Enter a valid host and port.'), findsOneWidget);

@@ -17,66 +17,10 @@ class TagsPage extends StatelessWidget {
     VoidCallback reload, {
     Tag? existing,
   }) async {
-    final controller = TextEditingController(text: existing?.name ?? '');
-    String? error;
-
     final saved = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setState) => AlertDialog(
-          title: Text(existing == null ? 'New Tag' : 'Edit Tag'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: controller,
-                autofocus: true,
-                decoration: const InputDecoration(labelText: 'Name'),
-              ),
-              if (error != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    error!,
-                    style: TextStyle(
-                      color: Theme.of(dialogContext).colorScheme.error,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                final name = controller.text.trim();
-                if (name.isEmpty) {
-                  setState(() => error = 'Name is required');
-                  return;
-                }
-                try {
-                  if (existing == null) {
-                    await api.createTag(name);
-                  } else {
-                    await api.updateTag(existing.id, name);
-                  }
-                  if (dialogContext.mounted) {
-                    Navigator.of(dialogContext).pop(true);
-                  }
-                } on ApiException catch (e) {
-                  setState(() => error = e.message);
-                }
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        ),
-      ),
+      builder: (dialogContext) => _TagFormDialog(api: api, existing: existing),
     );
-    controller.dispose();
     if (saved == true) reload();
   }
 
@@ -127,6 +71,85 @@ class TagsPage extends StatelessWidget {
                 },
               ),
       ),
+    );
+  }
+}
+
+class _TagFormDialog extends StatefulWidget {
+  final ApiClient api;
+  final Tag? existing;
+
+  const _TagFormDialog({required this.api, required this.existing});
+
+  @override
+  State<_TagFormDialog> createState() => _TagFormDialogState();
+}
+
+class _TagFormDialogState extends State<_TagFormDialog> {
+  // Owned by this State (not created/disposed by the caller) so Flutter only disposes it once
+  // this widget is actually removed from the tree — i.e. after the dialog's exit transition
+  // finishes, not the moment Navigator.pop() is called. Disposing it eagerly right after
+  // showDialog's Future resolves races that still-animating transition and crashes with
+  // "A TextEditingController was used after being disposed."
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.existing?.name ?? '',
+  );
+  String? _error;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final name = _controller.text.trim();
+    if (name.isEmpty) {
+      setState(() => _error = 'Name is required');
+      return;
+    }
+    try {
+      final existing = widget.existing;
+      if (existing == null) {
+        await widget.api.createTag(name);
+      } else {
+        await widget.api.updateTag(existing.id, name);
+      }
+      if (mounted) Navigator.of(context).pop(true);
+    } on ApiException catch (e) {
+      setState(() => _error = e.message);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.existing == null ? 'New Tag' : 'Edit Tag'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            decoration: const InputDecoration(labelText: 'Name'),
+          ),
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                _error!,
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(onPressed: _save, child: const Text('Save')),
+      ],
     );
   }
 }
