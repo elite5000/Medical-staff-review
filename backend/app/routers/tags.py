@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.db import get_db
+from app.schemas.bulk import BulkCreateResult, NameListCreate
 from app.schemas.tag import TagCreate, TagRead, TagUpdate
 from app.services import tag_service
 
@@ -16,6 +17,14 @@ def list_tags(db: Session = Depends(get_db)) -> list[TagRead]:
 @router.post("", response_model=TagRead, status_code=201)
 def create_tag(data: TagCreate, db: Session = Depends(get_db)) -> TagRead:
     return TagRead.model_validate(tag_service.create_tag(db, data))
+
+
+# Declared before the /{tag_id} routes so "bulk" is never parsed as a tag id.
+@router.post("/bulk", response_model=BulkCreateResult[TagRead], status_code=201)
+def bulk_create_tags(
+    data: NameListCreate, db: Session = Depends(get_db)
+) -> BulkCreateResult[TagRead]:
+    return tag_service.bulk_create_tags(db, data)
 
 
 @router.get("/{tag_id}", response_model=TagRead)

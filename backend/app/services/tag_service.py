@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 from app.models.associations import room_tags
 from app.models.rule import Rule
 from app.models.tag import Tag
-from app.schemas.tag import TagCreate, TagUpdate
+from app.schemas.bulk import BulkCreateResult, NameListCreate
+from app.schemas.tag import TagCreate, TagRead, TagUpdate
 from app.services.db_errors import conflict_on_duplicate_name
 
 
@@ -27,6 +28,29 @@ def create_tag(db: Session, data: TagCreate) -> Tag:
         db.commit()
     db.refresh(tag)
     return tag
+
+
+def bulk_create_tags(db: Session, data: NameListCreate) -> BulkCreateResult[TagRead]:
+    """Tag.name is UNIQUE, so a batch pasted from a spreadsheet will routinely repeat names
+    the practice already has. Rather than 409ing the whole batch, those are reported back as
+    `skipped` and the rest are created."""
+    # dict.fromkeys, not set(): a name repeated *within* the paste must collapse to one Tag
+    # (otherwise the batch would violate the UNIQUE constraint against itself) while keeping
+    # the pasted order, which is the order `created`/`skipped` are reported in.
+    names = list(dict.fromkeys(data.names))
+    existing = set(db.scalars(select(Tag.name).where(Tag.name.in_(names))))
+    tags = [Tag(name=name) for name in names if name not in existing]
+    db.add_all(tags)
+    # Still guarded: another client could insert one of these names between the SELECT above
+    # and this commit.
+    with conflict_on_duplicate_name(db, "Tag"):
+        db.commit()
+    for tag in tags:
+        db.refresh(tag)
+    return BulkCreateResult(
+        created=[TagRead.model_validate(t) for t in tags],
+        skipped=[name for name in names if name in existing],
+    )
 
 
 def update_tag(db: Session, tag_id: int, data: TagUpdate) -> Tag:
