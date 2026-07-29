@@ -175,6 +175,32 @@ void main() {
       // assigned to both, satisfying the minimum-count rule with zero violations.
       expect(find.textContaining(roomName), findsNWidgets(2));
       expect(find.textContaining(staffName), findsNWidgets(2));
+
+      final shiftLabel = '$buildingName - $roomName - $staffName';
+
+      // --- Personal roster view: pick the staff member, see both their shift blocks ---
+      await tester.tap(find.text('Personal'));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Search staff'),
+        staffName,
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(staffName).last);
+      await tester.pumpAndSettle();
+      expect(find.textContaining(shiftLabel), findsNWidgets(2));
+
+      // --- Map view: drill building -> room, see the same shifts (all staff) ---
+      await tester.tap(find.text('Map'));
+      await tester.pumpAndSettle();
+      expect(find.text('Buildings'), findsOneWidget);
+      await tester.tap(find.text(buildingName));
+      await tester.pumpAndSettle();
+      expect(find.text(buildingName), findsOneWidget); // breadcrumb title
+      await tester.tap(find.text(roomName));
+      await tester.pumpAndSettle();
+      expect(find.text('$buildingName > $roomName'), findsOneWidget);
+      expect(find.textContaining(shiftLabel), findsNWidgets(2));
     },
   );
 }

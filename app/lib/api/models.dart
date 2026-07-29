@@ -7,6 +7,17 @@ library;
 String dateToJson(DateTime date) =>
     '${date.year.toString().padLeft(4, '0')}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
+/// Raw minutes-since-midnight, not TimeOfDay: minutes can reach 1440 (midnight), which
+/// TimeOfDay's hour (0-23) can't represent. By default the hour is shown unwrapped, so a
+/// Building's closing_minutes of 1440 reads as "24:00" — distinct from an opening of
+/// "00:00". Pass wrap: true when minutes may run past a single day (e.g. a shift's window,
+/// which can extend past midnight) and the actual wall-clock hour is wanted instead.
+String formatClockMinutes(int minutes, {bool wrap = false}) {
+  final hour = wrap ? (minutes ~/ 60) % 24 : minutes ~/ 60;
+  final minute = minutes % 60;
+  return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
+}
+
 class Building {
   final int id;
   final String name;

@@ -26,6 +26,11 @@ const _rooms = [
   {'id': 1, 'name': 'Room B', 'building_id': 1, 'tags': <Object>[]},
   {'id': 2, 'name': 'Room A', 'building_id': 1, 'tags': <Object>[]},
 ];
+const _settings = {
+  'shift_length_minutes': 60,
+  'travel_time_minutes': 15,
+  'max_daily_minutes': 480,
+};
 const _staff = [
   {
     'id': 1,
@@ -79,6 +84,9 @@ MockClient _client({
   }
   if (request.method == 'GET' && request.url.path == '/tags') {
     return http.Response(jsonEncode(_tags), 200);
+  }
+  if (request.method == 'GET' && request.url.path == '/settings') {
+    return http.Response(jsonEncode(_settings), 200);
   }
   if (request.method == 'PATCH' && request.url.path == '/rosters/1/shifts/1') {
     onPatch?.call(request.url, request.body);
@@ -325,6 +333,9 @@ void main() {
         }
         if (request.method == 'GET' && request.url.path == '/tags') {
           return http.Response(jsonEncode(_tags), 200);
+        }
+        if (request.method == 'GET' && request.url.path == '/settings') {
+          return http.Response(jsonEncode(_settings), 200);
         }
         if (request.method == 'PATCH' &&
             request.url.path == '/rosters/1/shifts/1') {

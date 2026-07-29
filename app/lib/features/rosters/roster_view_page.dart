@@ -5,6 +5,9 @@ import '../../api/api_exception.dart';
 import '../../api/models.dart';
 import '../../widgets/async_loader.dart';
 import '../../widgets/error_banner.dart';
+import 'roster_map_view.dart';
+import 'roster_personal_view.dart';
+import 'shift_calendar.dart';
 
 typedef _RosterViewData = (
   RosterDetail,
@@ -13,7 +16,10 @@ typedef _RosterViewData = (
   List<Building>,
   List<Tag>,
   List<Roster>,
+  AppSettings,
 );
+
+enum _ViewMode { text, personal, map }
 
 /// Ported from frontend/src/pages/rosters/RosterViewPage.svelte.
 class RosterViewPage extends StatefulWidget {
@@ -28,6 +34,7 @@ class RosterViewPage extends StatefulWidget {
 
 class _RosterViewPageState extends State<RosterViewPage> {
   String? _error;
+  _ViewMode _viewMode = _ViewMode.text;
 
   Future<_RosterViewData> _load() async {
     final roster = await widget.api.getRoster(widget.rosterId);
@@ -36,7 +43,8 @@ class _RosterViewPageState extends State<RosterViewPage> {
     final buildings = await widget.api.listBuildings();
     final tags = await widget.api.listTags();
     final rosters = await widget.api.listRosters();
-    return (roster, rooms, staff, buildings, tags, rosters);
+    final settings = await widget.api.getSettings();
+    return (roster, rooms, staff, buildings, tags, rosters, settings);
   }
 
   // Only the latest generation for a date range is editable — matches RostersPage's
@@ -98,23 +106,20 @@ class _RosterViewPageState extends State<RosterViewPage> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Roster')),
-      body: AsyncLoader<_RosterViewData>(
-        load: _load,
-        builder: (context, data, reload) {
-          final (roster, rooms, staff, buildings, tags, rosters) = data;
-          final roomsById = {for (final r in rooms) r.id: r};
-          final buildingsById = {for (final b in buildings) b.id: b};
-          final tagsById = {for (final t in tags) t.id: t};
-          final staffById = {for (final s in staff) s.id: s};
-          final isLatest = _isLatestForRange(roster, rosters);
-          final shiftsByDate = _shiftsByDate(roster, roomsById);
-          final sortedDates = shiftsByDate.keys.toList()..sort();
+  Widget _buildTextView(
+    BuildContext context,
+    RosterDetail roster,
+    RosterLookups lookups,
+    List<Tag> tags,
+    List<Roster> rosters,
+    VoidCallback reload,
+  ) {
+    final tagsById = {for (final t in tags) t.id: t};
+    final isLatest = _isLatestForRange(roster, rosters);
+    final shiftsByDate = _shiftsByDate(roster, lookups.roomsById);
+    final sortedDates = shiftsByDate.keys.toList()..sort();
 
-          return ListView(
+    return ListView(
             padding: const EdgeInsets.all(16),
             children: [
               ErrorBanner(message: _error),
@@ -129,7 +134,7 @@ class _RosterViewPageState extends State<RosterViewPage> {
                 ),
                 for (final v in roster.violations)
                   Text(
-                    '• ${_violationLabel(v, roomsById, buildingsById, tagsById)}',
+                    '• ${_violationLabel(v, lookups.roomsById, lookups.buildingsById, tagsById)}',
                   ),
               ],
               for (final date in sortedDates) ...[
@@ -144,13 +149,13 @@ class _RosterViewPageState extends State<RosterViewPage> {
                     margin: const EdgeInsets.only(bottom: 4),
                     child: ListTile(
                       title: Text(
-                        '${roomsById[shift.roomId]?.name ?? '—'} · shift ${shift.shiftIndex}',
+                        '${lookups.roomsById[shift.roomId]?.name ?? '—'} · shift ${shift.shiftIndex}',
                       ),
                       subtitle: Text('Pinned: ${shift.pinned ? 'Yes' : 'No'}'),
                       trailing: isLatest
                           ? DropdownButton<int>(
                               value: shift.staffId,
-                              items: staff
+                              items: lookups.staff
                                   .map(
                                     (s) => DropdownMenuItem(
                                       value: s.id,
@@ -165,12 +170,79 @@ class _RosterViewPageState extends State<RosterViewPage> {
                               },
                             )
                           : Text(
-                              staffById[shift.staffId]?.name ??
+                              lookups.staffById[shift.staffId]?.name ??
                                   '${shift.staffId}',
                             ),
                     ),
                   ),
-              ],
+      ],
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Roster')),
+      body: AsyncLoader<_RosterViewData>(
+        load: _load,
+        builder: (context, data, reload) {
+          final (roster, rooms, staff, buildings, tags, rosters, settings) =
+              data;
+          final lookups = RosterLookups(
+            rooms: rooms,
+            buildings: buildings,
+            staff: staff,
+            settings: settings,
+          );
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(8),
+                child: SegmentedButton<_ViewMode>(
+                  segments: const [
+                    ButtonSegment(
+                      value: _ViewMode.text,
+                      label: Text('Text'),
+                      icon: Icon(Icons.list),
+                    ),
+                    ButtonSegment(
+                      value: _ViewMode.personal,
+                      label: Text('Personal'),
+                      icon: Icon(Icons.person),
+                    ),
+                    ButtonSegment(
+                      value: _ViewMode.map,
+                      label: Text('Map'),
+                      icon: Icon(Icons.map),
+                    ),
+                  ],
+                  selected: {_viewMode},
+                  showSelectedIcon: false,
+                  onSelectionChanged: (selected) =>
+                      setState(() => _viewMode = selected.first),
+                ),
+              ),
+              Expanded(
+                child: switch (_viewMode) {
+                  _ViewMode.text => _buildTextView(
+                    context,
+                    roster,
+                    lookups,
+                    tags,
+                    rosters,
+                    reload,
+                  ),
+                  _ViewMode.personal => RosterPersonalView(
+                    roster: roster,
+                    lookups: lookups,
+                  ),
+                  _ViewMode.map => RosterMapView(
+                    roster: roster,
+                    lookups: lookups,
+                  ),
+                },
+              ),
             ],
           );
         },

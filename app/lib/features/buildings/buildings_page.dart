@@ -6,15 +6,6 @@ import '../../api/models.dart';
 import '../../widgets/async_loader.dart';
 import '../../widgets/confirm_dialog.dart';
 
-// Not routed through TimeOfDay: the backend allows closing_minutes up to 1440 (midnight,
-// i.e. "open until the end of the day"), but TimeOfDay's hour is constrained to 0-23 and
-// asserts outside that range — constructing one for exactly 1440 would crash this list.
-String _formatMinutes(int minutes) {
-  final hour = minutes ~/ 60;
-  final minute = minutes % 60;
-  return '${hour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}';
-}
-
 /// Ported from frontend/src/pages/buildings/{BuildingsListPage,BuildingFormPage}.svelte.
 class BuildingsPage extends StatelessWidget {
   final ApiClient api;
@@ -54,7 +45,7 @@ class BuildingsPage extends StatelessWidget {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Opening time'),
-                trailing: Text(_formatMinutes(openingMinutes)),
+                trailing: Text(formatClockMinutes(openingMinutes)),
                 onTap: () async {
                   final picked = await showTimePicker(
                     context: dialogContext,
@@ -73,7 +64,7 @@ class BuildingsPage extends StatelessWidget {
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Closing time'),
-                trailing: Text(_formatMinutes(closingMinutes)),
+                trailing: Text(formatClockMinutes(closingMinutes)),
                 onTap: () async {
                   final picked = await showTimePicker(
                     context: dialogContext,
@@ -190,7 +181,7 @@ class BuildingsPage extends StatelessWidget {
                   return ListTile(
                     title: Text(building.name),
                     subtitle: Text(
-                      '${_formatMinutes(building.openingMinutes)} - ${_formatMinutes(building.closingMinutes)}',
+                      '${formatClockMinutes(building.openingMinutes)} - ${formatClockMinutes(building.closingMinutes)}',
                     ),
                     onTap: () => _showForm(context, reload, existing: building),
                     trailing: IconButton(
