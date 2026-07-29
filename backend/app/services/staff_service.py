@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.models.role import Role
 from app.models.shift import Shift
 from app.models.staff import PreferredDay, Staff, Unavailability
+from app.schemas.bulk import BulkCreateResult, NameListCreate
 from app.schemas.role import RoleRead
 from app.schemas.staff import PreferredDayInput, StaffCreate, StaffRead, StaffUpdate
 from app.schemas.unavailability import UnavailabilityCreate, UnavailabilityRead
@@ -61,6 +62,18 @@ def create_staff(db: Session, data: StaffCreate) -> Staff:
     db.commit()
     db.refresh(staff)
     return staff
+
+
+def bulk_create_staff(db: Session, data: NameListCreate) -> BulkCreateResult[StaffRead]:
+    """Staff.name has no UNIQUE constraint (two people can share a name), so nothing is
+    deduped or skipped. Roles and preferred days aren't settable in bulk — the batch is
+    names only, and each new member is edited individually afterwards."""
+    staff = [Staff(name=name, active=True, roles=[], preferred_days=[]) for name in data.names]
+    db.add_all(staff)
+    db.commit()
+    for member in staff:
+        db.refresh(member)
+    return BulkCreateResult(created=[staff_to_read(s) for s in staff])
 
 
 def update_staff(db: Session, staff_id: int, data: StaffUpdate) -> Staff:

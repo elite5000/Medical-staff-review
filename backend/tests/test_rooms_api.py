@@ -42,6 +42,59 @@ def test_create_room_unknown_tag_422(client: TestClient) -> None:
     assert response.status_code == 422
 
 
+def test_bulk_create_rooms(client: TestClient) -> None:
+    building = _create_building(client)
+    response = client.post(
+        "/rooms/bulk", json={"building_id": building["id"], "names": ["Room 1", "Room 2"]}
+    )
+    assert response.status_code == 201
+    body = response.json()
+    assert [r["name"] for r in body["created"]] == ["Room 1", "Room 2"]
+    assert all(r["building_id"] == building["id"] for r in body["created"])
+    assert all(r["tags"] == [] for r in body["created"])
+    assert body["skipped"] == []
+    assert len(client.get("/rooms").json()) == 2
+
+
+def test_bulk_create_rooms_trims_and_drops_blank_lines(client: TestClient) -> None:
+    building = _create_building(client)
+    response = client.post(
+        "/rooms/bulk",
+        json={"building_id": building["id"], "names": ["  Room 1  ", "", "   ", "\tRoom 2\n"]},
+    )
+    assert response.status_code == 201
+    assert [r["name"] for r in response.json()["created"]] == ["Room 1", "Room 2"]
+
+
+def test_bulk_create_rooms_keeps_repeated_names(client: TestClient) -> None:
+    """Room.name has no UNIQUE constraint, so unlike Tags/Roles a repeated name creates a
+    second Room rather than being deduped or skipped."""
+    building = _create_building(client)
+    client.post("/rooms", json={"name": "Room 1", "building_id": building["id"], "tag_ids": []})
+    response = client.post(
+        "/rooms/bulk", json={"building_id": building["id"], "names": ["Room 1", "Room 1"]}
+    )
+    assert response.status_code == 201
+    body = response.json()
+    assert [r["name"] for r in body["created"]] == ["Room 1", "Room 1"]
+    assert body["skipped"] == []
+    assert len(client.get("/rooms").json()) == 3
+
+
+def test_bulk_create_rooms_unknown_building_404(client: TestClient) -> None:
+    response = client.post("/rooms/bulk", json={"building_id": 999, "names": ["Room 1"]})
+    assert response.status_code == 404
+    assert client.get("/rooms").json() == []
+
+
+def test_bulk_create_rooms_empty_list(client: TestClient) -> None:
+    building = _create_building(client)
+    response = client.post("/rooms/bulk", json={"building_id": building["id"], "names": []})
+    assert response.status_code == 201
+    assert response.json() == {"created": [], "skipped": []}
+    assert client.get("/rooms").json() == []
+
+
 def test_update_room_tags(client: TestClient) -> None:
     building = _create_building(client)
     tag_a = client.post("/tags", json={"name": "General Practice"}).json()

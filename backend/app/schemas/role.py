@@ -17,3 +17,9 @@ class RoleRead(RoleBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+
+
+class RoleApplyToStaff(BaseModel):
+    """Body of POST /roles/{role_id}/apply-to-staff — the Staff to additively grant the Role to."""
+
+    staff_ids: list[int]

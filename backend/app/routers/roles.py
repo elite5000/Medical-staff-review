@@ -2,8 +2,10 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.schemas.role import RoleCreate, RoleRead, RoleUpdate
-from app.services import role_service
+from app.schemas.bulk import BulkCreateResult, NameListCreate
+from app.schemas.role import RoleApplyToStaff, RoleCreate, RoleRead, RoleUpdate
+from app.schemas.staff import StaffRead
+from app.services import role_service, staff_service
 
 router = APIRouter(prefix="/roles", tags=["roles"])
 
@@ -16,6 +18,14 @@ def list_roles(db: Session = Depends(get_db)) -> list[RoleRead]:
 @router.post("", response_model=RoleRead, status_code=201)
 def create_role(data: RoleCreate, db: Session = Depends(get_db)) -> RoleRead:
     return RoleRead.model_validate(role_service.create_role(db, data))
+
+
+# Declared before the /{role_id} routes so "bulk" is never parsed as a role id.
+@router.post("/bulk", response_model=BulkCreateResult[RoleRead], status_code=201)
+def bulk_create_roles(
+    data: NameListCreate, db: Session = Depends(get_db)
+) -> BulkCreateResult[RoleRead]:
+    return role_service.bulk_create_roles(db, data)
 
 
 @router.get("/{role_id}", response_model=RoleRead)
@@ -31,3 +41,13 @@ def update_role(role_id: int, data: RoleUpdate, db: Session = Depends(get_db)) -
 @router.delete("/{role_id}", status_code=204)
 def delete_role(role_id: int, db: Session = Depends(get_db)) -> None:
     role_service.delete_role(db, role_id)
+
+
+@router.post("/{role_id}/apply-to-staff", response_model=list[StaffRead])
+def apply_role_to_staff(
+    role_id: int, data: RoleApplyToStaff, db: Session = Depends(get_db)
+) -> list[StaffRead]:
+    # staff_to_read (rather than StaffRead.model_validate) because StaffRead represents
+    # preferred_days as {week, day_of_week} pairs, not the ORM's PreferredDay rows.
+    updated = role_service.apply_role_to_staff(db, role_id, data.staff_ids)
+    return [staff_service.staff_to_read(s) for s in updated]

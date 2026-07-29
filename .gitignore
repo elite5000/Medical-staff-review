@@ -1,7 +1,5 @@
-node_modules
-frontend/dist
-playwright-report
-test-results
+# IDEs
+.idea/
 
 # Python backend
 backend/.venv
@@ -12,6 +10,9 @@ backend/.mypy_cache
 backend/.ruff_cache
 backend/dev.db
 backend/.e2e-data/
+backend/.flutter-it-data/
 backend/htmlcov/
 backend/.coverage
+backend/build/
+backend/dist/
 

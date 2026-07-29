@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.db import get_db
+from app.schemas.bulk import BulkCreateResult, NameListCreate
 from app.schemas.staff import StaffCreate, StaffRead, StaffUpdate
 from app.schemas.unavailability import UnavailabilityCreate, UnavailabilityRead
 from app.services import staff_service
@@ -17,6 +18,14 @@ def list_staff(db: Session = Depends(get_db)) -> list[StaffRead]:
 @router.post("", response_model=StaffRead, status_code=201)
 def create_staff(data: StaffCreate, db: Session = Depends(get_db)) -> StaffRead:
     return staff_service.staff_to_read(staff_service.create_staff(db, data))
+
+
+# Declared before the /{staff_id} routes so "bulk" is never parsed as a staff id.
+@router.post("/bulk", response_model=BulkCreateResult[StaffRead], status_code=201)
+def bulk_create_staff(
+    data: NameListCreate, db: Session = Depends(get_db)
+) -> BulkCreateResult[StaffRead]:
+    return staff_service.bulk_create_staff(db, data)
 
 
 @router.get("/{staff_id}", response_model=StaffRead)

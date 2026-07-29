@@ -6,7 +6,8 @@ from app.models.room import Room
 from app.models.roster import RosterViolation
 from app.models.shift import Shift
 from app.models.tag import Tag
-from app.schemas.room import RoomCreate, RoomUpdate
+from app.schemas.bulk import BulkCreateResult
+from app.schemas.room import RoomBulkCreate, RoomCreate, RoomRead, RoomUpdate
 from app.services.building_service import get_building
 
 
@@ -40,6 +41,18 @@ def create_room(db: Session, data: RoomCreate) -> Room:
     db.commit()
     db.refresh(room)
     return room
+
+
+def bulk_create_rooms(db: Session, data: RoomBulkCreate) -> BulkCreateResult[RoomRead]:
+    """Room.name has no UNIQUE constraint (rooms in different Buildings routinely share a
+    name), so nothing is deduped or skipped here — every non-blank line becomes a Room."""
+    get_building(db, data.building_id)  # 404s if the building doesn't exist
+    rooms = [Room(name=name, building_id=data.building_id, tags=[]) for name in data.names]
+    db.add_all(rooms)
+    db.commit()
+    for room in rooms:
+        db.refresh(room)
+    return BulkCreateResult(created=[RoomRead.model_validate(r) for r in rooms])
 
 
 def _has_roster_history(db: Session, room_id: int) -> bool:

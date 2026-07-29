@@ -66,7 +66,8 @@
       "Bash(rm -f /tmp/fk_test.db)",
       "Bash(npx vitest *)",
       "Bash(git stash *)",
-      "Bash(git pull *)"
+      "Bash(git pull *)",
+      "Bash(git checkout *)"
     ]
   }
 }

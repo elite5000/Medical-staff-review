@@ -66,6 +66,47 @@ def test_create_staff_invalid_week_rejected(client: TestClient) -> None:
     assert response.status_code == 422
 
 
+def test_bulk_create_staff(client: TestClient) -> None:
+    response = client.post("/staff/bulk", json={"names": ["Dr. Alice", "Dr. Bob"]})
+    assert response.status_code == 201
+    body = response.json()
+    assert [s["name"] for s in body["created"]] == ["Dr. Alice", "Dr. Bob"]
+    # Bulk-add is names only: everyone starts active, with no roles and no preferred days.
+    assert all(s["active"] is True for s in body["created"])
+    assert all(s["roles"] == [] for s in body["created"])
+    assert all(s["preferred_days"] == [] for s in body["created"])
+    assert all(s["unavailabilities"] == [] for s in body["created"])
+    assert body["skipped"] == []
+    assert len(client.get("/staff").json()) == 2
+
+
+def test_bulk_create_staff_trims_and_drops_blank_lines(client: TestClient) -> None:
+    response = client.post(
+        "/staff/bulk", json={"names": ["  Dr. Alice  ", "", "   ", "\tDr. Bob\n"]}
+    )
+    assert response.status_code == 201
+    assert [s["name"] for s in response.json()["created"]] == ["Dr. Alice", "Dr. Bob"]
+
+
+def test_bulk_create_staff_keeps_repeated_names(client: TestClient) -> None:
+    """Staff.name has no UNIQUE constraint — two people can share a name, so a repeat is
+    created rather than deduped or skipped."""
+    client.post("/staff", json={"name": "Dr. Alice"})
+    response = client.post("/staff/bulk", json={"names": ["Dr. Alice", "Dr. Alice"]})
+    assert response.status_code == 201
+    body = response.json()
+    assert [s["name"] for s in body["created"]] == ["Dr. Alice", "Dr. Alice"]
+    assert body["skipped"] == []
+    assert len(client.get("/staff").json()) == 3
+
+
+def test_bulk_create_staff_empty_list(client: TestClient) -> None:
+    response = client.post("/staff/bulk", json={"names": []})
+    assert response.status_code == 201
+    assert response.json() == {"created": [], "skipped": []}
+    assert client.get("/staff").json() == []
+
+
 def test_update_staff_roles_and_preferred_days(client: TestClient) -> None:
     role_a = _create_role(client, "Senior Fellow")
     role_b = _create_role(client, "Emergency Medicine")
