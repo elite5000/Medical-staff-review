@@ -8,7 +8,7 @@ import 'connection_info.dart';
 import 'connection_store.dart';
 
 HttpClient _pinnedHttpClient(String expectedFingerprint) {
-  return HttpClient()
+  return newBackendHttpClient()
     ..badCertificateCallback = (cert, host, port) {
       final actual = sha256.convert(cert.der).toString();
       return actual == expectedFingerprint;
@@ -38,13 +38,7 @@ Future<ApiClient?> connectAndVerify(ConnectionInfo info) async {
     return null;
   }
 
-  final probeIoHttpClient = HttpClient()
-    ..badCertificateCallback = (cert, host, port) {
-      final actual = sha256.convert(cert.der).toString();
-      return actual == info.certFingerprint;
-    };
-
-  final probeClient = IOClient(probeIoHttpClient);
+  final probeClient = IOClient(_pinnedHttpClient(info.certFingerprint!));
   try {
     final probeApi = ApiClient(info, httpClient: probeClient);
     if (!await probeApi.verifyConnection()) return null;

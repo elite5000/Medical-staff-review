@@ -2,10 +2,19 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
+import 'package:http/io_client.dart';
 
 import '../connection/connection_info.dart';
 import 'api_exception.dart';
 import 'models.dart';
+
+/// Every HttpClient talking to the backend must come from here. uvicorn closes idle
+/// keep-alive connections after 5s, but Dart's default idleTimeout is 15s — so any request
+/// made 5–15s after the previous one (e.g. typing into a form, then Save) reused a socket
+/// the server had already closed and failed with "Connection closed before full header was
+/// received". Dropping idle sockets first means a fresh connection is opened instead.
+HttpClient newBackendHttpClient() =>
+    HttpClient()..idleTimeout = const Duration(seconds: 3);
 
 /// Thin typed wrapper over the backend's REST API (see backend/app/routers/*.py). Every
 /// method throws [ApiException] on a non-2xx response, with the message extracted from
@@ -15,7 +24,7 @@ class ApiClient {
   final http.Client _http;
 
   ApiClient(this.connection, {http.Client? httpClient})
-    : _http = httpClient ?? http.Client();
+    : _http = httpClient ?? IOClient(newBackendHttpClient());
 
   Map<String, String> get _headers => {
     'Content-Type': 'application/json',
