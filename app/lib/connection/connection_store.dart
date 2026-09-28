@@ -4,8 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'connection_info.dart';
 
-/// Persists the paired backend's connection details across app restarts, so the admin only
-/// scans the tray app's QR code (or types the address) once per device.
+/// Persists the last discovered backend's connection details across app restarts, so the
+/// app reconnects straight away instead of searching the network every launch.
 class ConnectionStore {
   static const _prefsKey = 'connection_info';
 

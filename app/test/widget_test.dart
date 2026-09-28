@@ -1,3 +1,4 @@
+import 'package:app/api/api_client.dart';
 import 'package:app/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,31 +9,30 @@ void main() {
     SharedPreferences.setMockInitialValues({});
   });
 
-  testWidgets('shows the connect screen when no backend has been paired', (
+  testWidgets('shows the connect screen when no backend has been found yet', (
     tester,
   ) async {
-    await tester.pumpWidget(const MedicalStaffReviewApp());
+    await tester.pumpWidget(MedicalStaffReviewApp(connect: () async => null));
     await tester.pumpAndSettle();
 
     expect(find.text('Connect to Medical Staff Review'), findsOneWidget);
-    expect(find.widgetWithText(TextField, 'Host / IP address'), findsOneWidget);
+    expect(find.widgetWithText(FilledButton, 'Retry'), findsOneWidget);
+    // Nothing to type — discovery supplies every connection detail.
+    expect(find.byType(TextField), findsNothing);
   });
 
-  testWidgets('rejects manual connect with an empty host', (tester) async {
-    await tester.pumpWidget(const MedicalStaffReviewApp());
+  testWidgets('searches for the backend as soon as the app opens', (
+    tester,
+  ) async {
+    var calls = 0;
+    Future<ApiClient?> connect() async {
+      calls++;
+      return null;
+    }
+
+    await tester.pumpWidget(MedicalStaffReviewApp(connect: connect));
     await tester.pumpAndSettle();
 
-    await tester.enterText(
-      find.widgetWithText(TextField, 'Host / IP address'),
-      '',
-    );
-    // The form sits in a SingleChildScrollView taller than the default test viewport, so the
-    // Connect button starts off-screen — scroll it into view before tapping.
-    final connectButton = find.widgetWithText(FilledButton, 'Connect');
-    await tester.ensureVisible(connectButton);
-    await tester.tap(connectButton);
-    await tester.pump();
-
-    expect(find.text('Enter a valid host and port.'), findsOneWidget);
+    expect(calls, 1);
   });
 }

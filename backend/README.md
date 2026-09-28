@@ -9,10 +9,12 @@ PC and/or phones/tablets.
 ```
 uv sync
 uv run alembic upgrade head
-uv run uvicorn app.main:app --port 8000
+uv run python -m app.dev_server
 ```
 
-Runs on `http://localhost:8000`, using `dev.db` (a local SQLite file, gitignored). In this
+Runs on `http://localhost:8765` (fixed — `BACKEND_PORT` in `app/discovery.py`) and answers
+the Flutter app's UDP discovery broadcast on that same port, so the app connects with no
+setup. Uses `dev.db` (a local SQLite file, gitignored). In this
 mode there's no pairing-token check (see `app/config.py`'s `_default_pairing_token`) — that
 only activates in the packaged desktop build.
 

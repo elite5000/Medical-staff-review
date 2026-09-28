@@ -2,9 +2,10 @@
 
 Flutter client for the [backend](../backend) API — targets Windows and macOS desktop plus
 Android. (iOS is not a supported target — building/testing it needs a Mac with Xcode, which
-isn't available here.) There's no bundled server: this app is always a client, pairing with
-a backend instance already running on the admin's Windows PC (see the tray app's "Show
-connection QR" menu item, or type the host/port/token shown there manually).
+isn't available here.) There's no bundled server: this app is always a client of a backend
+already running on the admin's Windows PC, which it finds on its own — it broadcasts a UDP
+discovery request on port 8765 and the backend replies with everything needed to connect
+(see `lib/connection/discovery.dart` and `backend/app/discovery.py`). No setup or pairing.
 
 ## Development
 
@@ -13,9 +14,9 @@ flutter pub get
 flutter run -d windows   # or -d macos / a connected phone/emulator
 ```
 
-On first launch it shows the connect/pairing screen; against a locally running dev backend
-(`uv run uvicorn app.main:app --port 8000` in `backend/`, no pairing token required in dev
-mode) just enter `localhost` / `8000` and leave the token blank.
+Start a dev backend first (`uv run python -m app.dev_server` in `backend/`) — the app finds
+and connects to it automatically. The port is fixed at 8765 (`backendPort` in
+`lib/connection/connection_info.dart`, `BACKEND_PORT` in `backend/app/discovery.py`).
 
 ### Tests
 

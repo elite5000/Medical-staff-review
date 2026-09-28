@@ -16,8 +16,8 @@ def _default_pairing_token() -> str | None:
     """None outside the packaged desktop build, so dev/test traffic is never gated.
 
     Packaged builds always enforce a token (see main.py's require_pairing_token
-    middleware), persisted next to the DB so it survives restarts and previously paired
-    devices don't need to re-scan the tray app's QR code.
+    middleware), persisted next to the DB so it survives restarts and previously connected
+    devices keep working without rediscovering the backend.
     """
     if not is_frozen():
         return None

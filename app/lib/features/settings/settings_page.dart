@@ -152,8 +152,8 @@ class _SettingsPageState extends State<SettingsPage> {
               onPressed: () async {
                 if (await confirmDialog(
                   context,
-                  'Disconnect from this backend? You\'ll need to pair again '
-                  '(scan the QR code or enter its address) to reconnect.',
+                  'Disconnect from this backend? The app will search the network '
+                  'for it again.',
                   confirmLabel: 'Disconnect',
                 )) {
                   widget.onDisconnect();

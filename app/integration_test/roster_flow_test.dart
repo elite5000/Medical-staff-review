@@ -1,5 +1,4 @@
 import 'package:app/main.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -10,9 +9,8 @@ import 'package:integration_test/integration_test.dart';
 /// is suffixed so this is safe to run against a shared backend without colliding with other
 /// data.
 ///
-/// Requires a backend already running on port 8000 (bound to 0.0.0.0 if targeting an
-/// emulator, not just 127.0.0.1) with no pairing token configured (dev mode — see
-/// backend/app/config.py). See app/README or the migration plan's Verification section for
+/// Requires a dev backend already running (`uv run python -m app.dev_server` in backend/,
+/// which serves on port 8765 and answers the app's discovery broadcast). See app/README for
 /// how to start one against a throwaway DB.
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
@@ -28,24 +26,10 @@ void main() {
       final staffName = 'Dr. Alice $suffix';
       final ruleName = 'ED minimum staffing $suffix';
 
+      // Either reconnects to the remembered backend or discovers it on the LAN — both land
+      // on AppShell with no input (see ConnectScreen / discovery.dart).
       await tester.pumpWidget(const MedicalStaffReviewApp());
       await tester.pumpAndSettle();
-
-      // A prior run's pairing is remembered via real shared_preferences on this machine (see
-      // ConnectionStore), so _RootPage may skip straight past ConnectScreen to AppShell —
-      // only drive the connect form if it's actually showing.
-      final hostField = find.widgetWithText(TextField, 'Host / IP address');
-      if (hostField.evaluate().isNotEmpty) {
-        // Android emulators can't reach the host machine via 127.0.0.1 — 10.0.2.2 is the
-        // special alias the emulator maps back to the host's loopback interface.
-        final backendHost = defaultTargetPlatform == TargetPlatform.android
-            ? '10.0.2.2'
-            : '127.0.0.1';
-        await tester.enterText(hostField, backendHost);
-        await tester.enterText(find.widgetWithText(TextField, 'Port'), '8000');
-        await tester.tap(find.widgetWithText(FilledButton, 'Connect'));
-        await tester.pumpAndSettle();
-      }
 
       // --- Building (08:00-16:00 default divides into two 4-hour shift blocks) ---
       await tester.tap(find.text('Buildings'));

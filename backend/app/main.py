@@ -17,9 +17,9 @@ async def require_pairing_token(
     """Gates every request but /health behind the packaged app's per-install pairing token.
 
     No-op in dev/test, where settings.pairing_token is None (see app/config.py's
-    _default_pairing_token) — only the packaged desktop build generates and enforces one, so
-    that other devices on the same LAN can't use the API without first pairing via the tray
-    app's QR code.
+    _default_pairing_token) — only the packaged desktop build generates and enforces one.
+    Clients get it from the LAN discovery handshake (app/discovery.py), so this keeps out
+    anything that hasn't done that handshake, not other devices on the same LAN.
     """
     if settings.pairing_token and request.url.path != "/health":
         if request.headers.get("authorization") != f"Bearer {settings.pairing_token}":

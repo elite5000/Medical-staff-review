@@ -36,7 +36,6 @@ dependencies:
   cupertino_icons: ^1.0.8
   http: ^1.6.0
   shared_preferences: ^2.5.5
-  mobile_scanner: ^7.4.0
   intl: ^0.20.3
   crypto: ^3.0.7
 

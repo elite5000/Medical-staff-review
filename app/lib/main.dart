@@ -11,7 +11,10 @@ void main() {
 }
 
 class MedicalStaffReviewApp extends StatelessWidget {
-  const MedicalStaffReviewApp({super.key});
+  /// How [ConnectScreen] finds and connects to the backend — overridable for widget tests.
+  final Future<ApiClient?> Function() connect;
+
+  const MedicalStaffReviewApp({super.key, this.connect = discoverAndConnect});
 
   @override
   Widget build(BuildContext context) {
@@ -20,16 +23,19 @@ class MedicalStaffReviewApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
       ),
-      home: const _RootPage(),
+      home: _RootPage(connect: connect),
     );
   }
 }
 
-/// Decides between the pairing screen and the main app shell: tries the connection info
-/// persisted from a previous pairing first, falling back to [ConnectScreen] if there is
-/// none, or if the previously paired backend can no longer be reached.
+/// Decides between the connect screen and the main app shell: tries the connection info
+/// persisted from the last successful connection first, falling back to [ConnectScreen]
+/// (which rediscovers the backend on the LAN) if there is none, or if it can no longer be
+/// reached — e.g. the admin PC's IP address changed.
 class _RootPage extends StatefulWidget {
-  const _RootPage();
+  final Future<ApiClient?> Function() connect;
+
+  const _RootPage({required this.connect});
 
   @override
   State<_RootPage> createState() => _RootPageState();
@@ -75,7 +81,7 @@ class _RootPageState extends State<_RootPage> {
     }
     final api = _api;
     if (api == null) {
-      return ConnectScreen(onConnected: _onConnected);
+      return ConnectScreen(onConnected: _onConnected, connect: widget.connect);
     }
     return AppShell(api: api, onDisconnect: _disconnect);
   }

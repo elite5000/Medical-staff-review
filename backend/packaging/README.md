@@ -66,9 +66,11 @@ inside the frozen build end-to-end.
 
 ## Expected warnings on first run
 
-- **Windows Defender Firewall**: the tray app binds a port and will trigger the standard
-  one-time "allow this app" prompt (scoped to the Private network profile) the first time it
-  starts. Expected — the admin clicks "Allow".
+- **Windows Defender Firewall**: the tray app binds port 8765 (TCP for the API, UDP for the
+  app's discovery broadcast) and will trigger the standard one-time "allow this app" prompt
+  (scoped to the Private network profile) the first time it starts. Expected — the admin
+  clicks "Allow"; the resulting per-program rule covers both protocols. Without it, other
+  devices can't discover or reach the backend (the desktop client on the same PC still can).
 - **Windows SmartScreen**: `MedicalStaffReviewSetup.exe` is unsigned, so SmartScreen will
   likely warn ("Windows protected your PC") the first time it's run. Expected too — the admin
   clicks "More info" → "Run anyway". Code signing would remove this but is a separate, paid
@@ -82,8 +84,7 @@ inside the frozen build end-to-end.
   `app/build/windows/x64/runner/Release/app.exe` both exist), so `iscc` should have what it
   needs — just not proven by actually compiling it.
 - Installing the compiled `MedicalStaffReviewSetup.exe` on a clean machine/user account:
-  Startup-folder autostart actually firing after a real login, the tray icon and its "Show
-  connection QR" / "Open data folder" / "Quit" menu items, and the first-run Windows
-  Defender Firewall prompt.
-- Pairing a phone over a real LAN (scanning the QR code from a second device) — that's the
-  Flutter side (tasks #4+), not built yet.
+  Startup-folder autostart actually firing after a real login, the tray icon and its
+  "Open data folder" / "Quit" menu items, and the first-run Windows Defender Firewall prompt.
+- A phone/tablet discovering the backend over a real LAN (UDP broadcast on 8765) — some
+  routers/guest Wi-Fi networks block broadcasts between clients.

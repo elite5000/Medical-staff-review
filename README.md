@@ -9,8 +9,8 @@ Rule, Shift, Roster, etc.) used throughout this README and the codebase.
 
 - **[`backend/`](backend)** — FastAPI + SQLAlchemy + OR-Tools API. Runs on one Windows PC on
   the practice's LAN (the admin's machine) and owns the database.
-- **[`app/`](app)** — Flutter client (Windows, macOS, Android) that pairs with that backend
-  over HTTP. There's no bundled server — the app is always a client.
+- **[`app/`](app)** — Flutter client (Windows, macOS, Android) that finds that backend
+  on the LAN automatically and talks to it over HTTPS. There's no bundled server — the app is always a client.
 
 For day-to-day use, the backend runs unattended as a Windows tray app (auto-starts at
 login, no terminal), and the Flutter app is what staff/admins actually open. The sections
@@ -32,11 +32,13 @@ and using the finished app.
 cd backend
 uv sync
 uv run alembic upgrade head
-uv run uvicorn app.main:app --port 8000
+uv run python -m app.dev_server
 ```
 
-Serves `http://localhost:8000` against a local SQLite file (`dev.db`, gitignored). In this
-mode there's no pairing-token check — that only activates in the packaged desktop build.
+Serves `http://localhost:8765` (the same fixed port the packaged build uses) against a local
+SQLite file (`dev.db`, gitignored), and answers the app's discovery broadcast so the app
+connects on its own. In this mode there's no pairing token or TLS — those only activate in
+the packaged desktop build.
 Tests: `uv run pytest`. Lint/types: `uv run ruff check .` and `uv run mypy app tests`.
 
 ### App
@@ -47,8 +49,7 @@ flutter pub get
 flutter run -d windows   # or -d macos / a connected phone/emulator
 ```
 
-On first launch it shows the connect/pairing screen — against the dev backend above, enter
-`localhost` / `8000` and leave the pairing token blank. Tests: `flutter analyze` and
+It finds the dev backend above automatically — nothing to enter. Tests: `flutter analyze` and
 `flutter test` (widget tests, mocked HTTP); `flutter test integration_test -d windows` runs
 the full flow against a real backend you've started yourself.
 
@@ -105,17 +106,19 @@ Mac with Xcode, not available in this project's dev setup).
 Run the installer above (or an already-built one) once. The backend starts automatically at
 every login from then on — no terminal, just a tray icon. Right-click it for:
 
-- **Show connection QR** — the host, port, pairing token and certificate fingerprint another
-  device needs to pair, as a QR code
 - **Open data folder** — where the database lives
 - **Quit**
 
-### 2. Pairing a device (phone, tablet, or the desktop client itself)
+### 2. Connecting a device (phone, tablet, or the desktop client itself)
 
-Open the app. On first launch it shows a connect screen — either **Scan QR code** (point it
-at the tray app's "Show connection QR" window) or enter the host/IP, port, pairing token and
-certificate fingerprint manually. Once paired, the connection is remembered; use
-**Settings → Disconnect** to pair a different backend or re-pair after a token change.
+Open the app on any device on the same network — it finds the backend by itself (a UDP
+broadcast on port 8765, which the backend answers with its connection details) and connects.
+There's nothing to type or scan. The connection is remembered; if the backend can't be
+reached later (e.g. the PC's IP changed) the app searches again, and **Settings →
+Disconnect** forces a fresh search.
+
+Note this trusts the local network: any device on the same LAN that runs the discovery
+handshake gets access, so run the backend on a private network, not guest/public Wi-Fi.
 
 ### 3. Set up your data
 

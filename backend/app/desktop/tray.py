@@ -12,9 +12,7 @@ Verification section).
 from __future__ import annotations
 
 import http.client
-import ipaddress
 import json
-import socket
 import ssl
 import sys
 import threading
@@ -22,9 +20,8 @@ import time
 import tkinter as tk
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from tkinter import messagebox, ttk
+from tkinter import messagebox
 
-import qrcode
 import uvicorn
 from alembic import command
 from alembic.config import Config
@@ -32,13 +29,14 @@ from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
-from PIL import Image, ImageDraw, ImageTk
+from PIL import Image, ImageDraw
 from pystray import Icon, Menu, MenuItem
 
 from app.config import settings
+from app.discovery import BACKEND_PORT, start_discovery_responder
 from app.paths import get_data_dir, is_frozen
 
-PORT = 8765
+PORT = BACKEND_PORT
 _CERT_LOCK = threading.Lock()
 
 
@@ -54,48 +52,6 @@ def _backend_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
-def _candidate_lan_ips() -> list[str]:
-    """Returns non-loopback IPv4 candidates for client devices to reach this host.
-
-    Prioritizes private RFC1918 addresses (typical LAN adapters), while still keeping a
-    non-private fallback when that's all the host has.
-    """
-
-    def _append_unique(items: list[str], value: str) -> None:
-        if value not in items:
-            items.append(value)
-
-    candidates: list[str] = []
-
-    # Route-based hint (can be wrong with full-tunnel VPN, but useful as one signal).
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        sock.connect(("8.8.8.8", 80))
-        route_ip = str(sock.getsockname()[0])
-        if route_ip != "127.0.0.1":
-            _append_unique(candidates, route_ip)
-    except OSError:
-        pass
-    finally:
-        sock.close()
-
-    for host in (socket.gethostname(), socket.getfqdn()):
-        try:
-            for entry in socket.getaddrinfo(host, None, family=socket.AF_INET):
-                ip = str(entry[4][0])
-                if ip != "127.0.0.1":
-                    _append_unique(candidates, ip)
-        except OSError:
-            continue
-
-    private = [ip for ip in candidates if ipaddress.ip_address(ip).is_private]
-    if private:
-        return private
-    if candidates:
-        return candidates
-    return ["127.0.0.1"]
-
-
 def _run_migrations() -> None:
     root = _backend_root()
     config = Config(str(root / "alembic.ini"))
@@ -108,7 +64,7 @@ def _ensure_certificate() -> tuple[Path, Path]:
     """Generates a self-signed cert + key on first run, persisted next to the DB/pairing
     token — same idempotent "generate once, reuse forever" pattern as
     app/config.py's _default_pairing_token. Encrypts the pairing token in transit; the
-    Flutter client pins the cert's fingerprint (see _connection_payload) rather than relying
+    Flutter client pins the cert's fingerprint (handed out by app/discovery.py) rather than relying
     on a CA, since there's no real hostname to issue a CA-signed cert for here.
     """
     data_dir = get_data_dir()
@@ -176,97 +132,6 @@ def _tray_icon_image() -> Image.Image:
     draw = ImageDraw.Draw(image)
     draw.ellipse((4, 4, 60, 60), fill="#2f6fed")
     return image
-
-
-def _connection_payload(host: str) -> str:
-    cert_path, _ = _ensure_certificate()
-    return json.dumps(
-        {
-            "host": host,
-            "port": PORT,
-            "token": settings.pairing_token,
-            "cert_fingerprint": _cert_fingerprint(cert_path),
-        }
-    )
-
-
-def _show_connection_window() -> None:
-    """Opens a small window with a QR code encoding {host, port, token} for the Flutter
-    app's "scan to connect" flow. Runs its own Tk mainloop in a dedicated thread each time
-    it's invoked from the tray menu, so it never blocks the tray icon or the API server."""
-    candidate_ips = _candidate_lan_ips()
-
-    window = tk.Tk()
-    window.title("Medical Staff Review — Connect a device")
-    window.resizable(False, False)
-
-    selected_host = tk.StringVar(value=candidate_ips[0])
-    address_var = tk.StringVar(value=f"{selected_host.get()}:{PORT}")
-
-    image_label = ttk.Label(window)
-    image_label.pack(padx=16, pady=(16, 8))
-
-    def update_qr(host: str) -> None:
-        qr_image = qrcode.make(_connection_payload(host)).get_image().resize((320, 320))
-        photo = ImageTk.PhotoImage(qr_image)
-        image_label.configure(image=photo)
-        image_label.image = photo  # type: ignore[attr-defined]  # keep a reference alive
-        address_var.set(f"{host}:{PORT}")
-
-    update_qr(selected_host.get())
-
-    if len(candidate_ips) > 1:
-        ttk.Label(window, text="Host / IP for other devices").pack(pady=(0, 4))
-        host_picker = ttk.Combobox(
-            window,
-            values=candidate_ips,
-            textvariable=selected_host,
-            state="readonly",
-            width=28,
-        )
-        host_picker.pack(padx=16, pady=(0, 8))
-        host_picker.bind(
-            "<<ComboboxSelected>>",
-            lambda _event: update_qr(selected_host.get()),
-        )
-
-    ttk.Label(window, textvariable=address_var, font=("Segoe UI", 12)).pack()
-
-    # QR scanning is Android-only (see connect_screen.dart's _isMobile) — Windows and macOS
-    # clients must type host/port/token by hand, so the token needs to be shown here too,
-    # not just embedded in the QR image. A read-only Entry (rather than a Label) lets the
-    # admin select and copy it directly, backed up by an explicit copy-to-clipboard button.
-    token = settings.pairing_token or ""
-    token_var = tk.StringVar(value=token)
-    token_entry = ttk.Entry(
-        window, textvariable=token_var, state="readonly", width=36, justify="center"
-    )
-    token_entry.pack(padx=16, pady=(8, 4))
-
-    def copy_token() -> None:
-        window.clipboard_clear()
-        window.clipboard_append(token)
-
-    ttk.Button(window, text="Copy token", command=copy_token).pack(pady=(0, 16))
-
-    fingerprint = _cert_fingerprint(_ensure_certificate()[0])
-    ttk.Label(window, text="Certificate fingerprint (SHA-256)").pack(pady=(0, 4))
-    fingerprint_var = tk.StringVar(value=fingerprint)
-    fingerprint_entry = ttk.Entry(
-        window,
-        textvariable=fingerprint_var,
-        state="readonly",
-        width=70,
-        justify="center",
-    )
-    fingerprint_entry.pack(padx=16, pady=(0, 4))
-
-    def copy_fingerprint() -> None:
-        window.clipboard_clear()
-        window.clipboard_append(fingerprint)
-
-    ttk.Button(window, text="Copy fingerprint", command=copy_fingerprint).pack(pady=(0, 16))
-    window.mainloop()
 
 
 def _open_data_folder() -> None:
@@ -389,8 +254,11 @@ def main() -> None:
         _show_startup_error(detail)
         return
 
-    def show_connection_window(icon: Icon, item: MenuItem) -> None:
-        threading.Thread(target=_show_connection_window, daemon=True).start()
+    try:
+        start_discovery_responder(settings.pairing_token, expected_fingerprint)
+    except OSError as exc:  # pragma: no cover - startup path is integration-only
+        _show_startup_error(f"Could not listen for devices on UDP port {PORT}: {exc}")
+        return
 
     def open_data_folder(icon: Icon, item: MenuItem) -> None:
         _open_data_folder()
@@ -403,7 +271,6 @@ def main() -> None:
         _tray_icon_image(),
         "Medical Staff Review",
         menu=Menu(
-            MenuItem("Show connection QR", show_connection_window),
             MenuItem("Open data folder", open_data_folder),
             MenuItem("Quit", quit_app),
         ),

@@ -22,10 +22,8 @@ HttpClient _pinnedHttpClient(String expectedFingerprint) {
 ///
 /// For a dev backend (`info.token == null`) this is just [ApiClient.verifyConnection] over
 /// plain HTTP. For a packaged backend, it connects over HTTPS and pins the server's
-/// certificate: if [info] already has a `certFingerprint` (from a QR scan, or a previous
-/// pairing), the presented certificate must match exactly or the connection is rejected —
-/// otherwise (manual entry, first time) it trusts whatever certificate is presented on this
-/// first connection, so every connection after this one is strictly pinned too.
+/// certificate to `info.certFingerprint` (from the discovery handshake, or the stored
+/// connection) — a mismatched certificate rejects the connection.
 Future<ApiClient?> connectAndVerify(ConnectionInfo info) async {
   if (info.token == null) {
     final api = ApiClient(info);
@@ -34,9 +32,8 @@ Future<ApiClient?> connectAndVerify(ConnectionInfo info) async {
     return api;
   }
 
-  // For packaged builds (token-enabled), manual pairing must include the certificate
-  // fingerprint out of band; otherwise the very first TLS connection would be TOFU and
-  // could leak the bearer token to an on-path attacker.
+  // A packaged (token-enabled) backend always hands out its fingerprint during discovery;
+  // without one there's nothing to pin, so don't send the bearer token at all.
   if (info.certFingerprint == null || info.certFingerprint!.isEmpty) {
     return null;
   }
