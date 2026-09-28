@@ -1,1 +1,129 @@
-test
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (PyInstaller exe)
+    # tray.spec reads OR-Tools DLLs from the Windows venv layout (.venv/Lib/site-packages)
+    # and the output is a Windows tray app, so this must build on Windows.
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Type check
+        run: uv run mypy app tests
+
+      - name: Test
+        run: uv run pytest
+
+      - name: Build exe
+        run: uv run pyinstaller --noconfirm packaging/tray.spec
+
+      - name: Upload backend build
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-windows
+          path: backend/dist/MedicalStaffReview/
+          if-no-files-found: error
+
+  app:
+    name: App (Flutter Windows exe)
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
+
+      - name: Build exe
+        run: flutter build windows --release
+
+      - name: Upload app build
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-windows
+          path: app/build/windows/x64/runner/Release/
+          if-no-files-found: error
+
+  installer:
+    name: Installer (Inno Setup)
+    needs: [backend, app]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # installer.iss reads both builds from their normal local output paths.
+      - name: Download backend build
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-windows
+          path: backend/dist/MedicalStaffReview/
+
+      - name: Download app build
+        uses: actions/download-artifact@v4
+        with:
+          name: app-windows
+          path: app/build/windows/x64/runner/Release/
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup --no-progress -y
+          }
+          if (-not (Test-Path $iscc)) { throw "ISCC.exe not found at $iscc" }
+          Split-Path $iscc | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+
+      - name: Build installer
+        working-directory: backend
+        run: iscc packaging/installer.iss
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-windows
+          path: backend/packaging/dist_installer/MedicalStaffReviewSetup.exe
+          if-no-files-found: error

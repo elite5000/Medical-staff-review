@@ -9,8 +9,9 @@
 ;   2. cd app && flutter build windows --release              -> app/build/windows/x64/runner/Release/
 ;   3. iscc backend/packaging/installer.iss                   -> backend/packaging/dist_installer/MedicalStaffReviewSetup.exe
 ;
-; Requires Inno Setup (https://jrsoftware.org/isinfo.php) — not installed in this repo/CI,
-; so step 3 must be run manually on a machine that has it (see packaging/README.md).
+; Requires Inno Setup (https://jrsoftware.org/isinfo.php). CI runs all three steps (see
+; .github/workflows/main.yml's installer job); locally, step 3 needs a machine with Inno
+; Setup installed (see packaging/README.md).
 
 #define MyAppName "Medical Staff Review"
 #define MyBackendExeName "MedicalStaffReview.exe"
