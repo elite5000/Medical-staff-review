@@ -347,7 +347,25 @@ def _show_startup_error(message: str) -> None:
     root.destroy()
 
 
+def _redirect_missing_stdio() -> None:
+    """Points sys.stdout/sys.stderr at a log file when the windowed build leaves them None.
+
+    A console=False PyInstaller exe starts with no stdio streams, and uvicorn's default
+    logging config calls sys.stdout.isatty() while building its formatter — which fails as
+    "Unable to configure formatter 'default'". Sending both streams to backend.log in the
+    data folder fixes that and keeps server output somewhere an admin can find it.
+    """
+    if sys.stdout is not None and sys.stderr is not None:
+        return
+    log_file = open(get_data_dir() / "backend.log", "a", encoding="utf-8", buffering=1)  # noqa: SIM115
+    if sys.stdout is None:
+        sys.stdout = log_file
+    if sys.stderr is None:
+        sys.stderr = log_file
+
+
 def main() -> None:
+    _redirect_missing_stdio()
     try:
         _run_migrations()
         cert_path, _ = _ensure_certificate()
